@@ -85,7 +85,6 @@ const startServer = async () => {
       logger.info(`🚀 CarbonTrace server running on port ${PORT}`);
     });
 
-    // FIX: filename was 'Weeklyemail.js' — renamed to 'weeklyEmail.js' (see utils/)
     if (process.env.NODE_ENV === 'production' || process.env.ENABLE_CRON === 'true') {
       try {
         const cron = require('node-cron');
