@@ -1,0 +1,50 @@
+# =========================
+# 1. Environment Variables (CRITICAL)
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# 2. Dependencies
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json # (Optional: remove this line if you WANT to track exact versions)
+
+# =========================
+# 3. Build Outputs
+# =========================
+dist/
+dist-ssr/
+build/
+out/
+coverage/
+
+# =========================
+# 4. OS / System Files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# 5. IDE / Editor Folders
+# =========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================
+# 6. Logs & Databases
+# =========================
+logs/
+*.log
+*.sqlite

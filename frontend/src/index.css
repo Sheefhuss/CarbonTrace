@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  @apply bg-forest-950;
+}
+
+@layer base {
+  input, textarea, select {
+    color-scheme: dark;
+  }
+
+  input[type="password"],
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="range"] {
+    color: white;
+    background-color: transparent;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #1b3d2f inset !important;
+    -webkit-text-fill-color: white !important;
+    caret-color: white !important;
+  }
+
+  select option {
+    background-color: #1b3d2f;
+    color: white;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl transition-all;
+  }
+
+  .btn-primary {
+    @apply bg-forest-500 hover:bg-forest-400 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 active:scale-95 shadow-lg shadow-forest-500/20;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white border border-white/10 font-medium py-2.5 px-5 rounded-xl transition-all duration-200 active:scale-95;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl border border-white/10 text-white placeholder:text-forest-400 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent text-sm;
+    background-color: rgba(255, 255, 255, 0.08);
+    -webkit-text-fill-color: white;
+    caret-color: white;
+  }
+
+  .input:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .label {
+    @apply block text-xs font-medium text-forest-300 mb-1.5 uppercase tracking-wide;
+  }
+
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 w-max tracking-wide;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Coin toast animations ──────────────────────────────────────────────────── */
+@keyframes coinPop {
+  0%   { transform: translateX(-50%) translateY(0) scale(0.5); opacity: 0; }
+  15%  { transform: translateX(-50%) translateY(-20px) scale(1.15); opacity: 1; }
+  30%  { transform: translateX(-50%) translateY(-28px) scale(1); opacity: 1; }
+  70%  { transform: translateX(-50%) translateY(-28px) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-60px) scale(0.8); opacity: 0; }
+}
+
+@keyframes coinSpin {
+  0%   { transform: rotateY(0deg); }
+  50%  { transform: rotateY(180deg); }
+  100% { transform: rotateY(360deg); }
+}
