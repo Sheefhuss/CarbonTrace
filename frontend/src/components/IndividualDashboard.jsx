@@ -13,6 +13,7 @@ import {
 } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
+import socket from '../socket';
 
 function CoinToast({ points, visible, onDone }) {
   useEffect(() => {
@@ -108,32 +109,34 @@ function groupMessagesByDate(messages) {
   return groups;
 }
 
-function FriendChatModal({ friend, currentUser, onClose }) {
+function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [deleteMenu, setDeleteMenu] = useState(null);
-  const [isOnline, setIsOnline] = useState(false);
   const bottomRef = useRef(null);
 
+  const isOnline = onlineUsers[friend.id] || (friend.lastActiveDate === new Date().toISOString().split('T')[0]);
+
   useEffect(() => {
-    const fetchMessages = () => {
-      axios.get(`/api/users/messages/${friend.id}`)
-        .then(r => setMessages(r.data))
-        .catch(() => {});
-    };
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 5000); 
-    return () => clearInterval(interval);
+    axios.get(`/api/users/messages/${friend.id}`)
+      .then(r => setMessages(r.data))
+      .catch(() => {});
   }, [friend.id]);
 
   useEffect(() => {
-    const lastActive = friend.lastActiveDate;
-    if (lastActive) {
-      const today = new Date().toISOString().split('T')[0];
-      setIsOnline(lastActive === today);
-    }
-  }, [friend]);
+    const handleNewMessage = (msg) => {
+      if (msg.senderId === friend.id || msg.receiverId === friend.id) {
+        setMessages(prev => {
+          if (prev.find(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+    };
+
+    socket.on('receive_message', handleNewMessage);
+    return () => socket.off('receive_message', handleNewMessage);
+  }, [friend.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -146,6 +149,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
     try {
       const res = await axios.post(`/api/users/messages/${friend.id}`, { text });
       setMessages(prev => [...prev, res.data]);
+      socket.emit('send_message', res.data);
       setInput('');
     } catch (err) {
       console.error('Send failed:', err?.response?.data || err.message);
@@ -187,7 +191,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
             <p className="font-bold text-white">{friend.name}</p>
             <p className="text-xs text-forest-400 flex items-center gap-1">
               <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', isOnline ? 'bg-green-400' : 'bg-forest-600')} />
-              {isOnline ? 'Active today' : 'Offline'} · @{friend.username} · 🔥{friend.streakDays}d
+              {isOnline ? 'Online' : 'Offline'} · @{friend.username} · 🔥{friend.streakDays}d
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 hover:text-white flex items-center justify-center">
@@ -263,6 +267,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   const [chatFriend, setChatFriend] = useState(null);
   const [prevPoints, setPrevPoints] = useState(user?.points || 0);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState({});
   
   const { tips, loading: tipsLoading, generateTips } = useAITips(emissions, user, location);
   const dailyFact = getDailyFact();
@@ -285,16 +290,44 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
+
+    socket.emit('user_online', user.id);
+
+    const handleStatusUpdate = ({ userId, status }) => {
+      setOnlineUsers(prev => ({ ...prev, [userId]: status === 'online' }));
+    };
+
+    socket.on('status_update', handleStatusUpdate);
+
+    return () => {
+      socket.off('status_update', handleStatusUpdate);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!friends.length) return;
+    
     const fetchAllUnread = () => {
       axios.get('/api/users/messages/unread-counts')
         .then(r => setUnreadCounts(r.data || {}))
         .catch(() => {});
     };
+    
     fetchAllUnread();
-    const interval = setInterval(fetchAllUnread, 15000);
-    return () => clearInterval(interval);
-  }, [friends.length]);
+
+    const handleNewMessage = (msg) => {
+      if (msg.receiverId === user.id && (!chatFriend || chatFriend.id !== msg.senderId)) {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [msg.senderId]: (prev[msg.senderId] || 0) + 1
+        }));
+      }
+    };
+
+    socket.on('receive_message', handleNewMessage);
+    return () => socket.off('receive_message', handleNewMessage);
+  }, [friends.length, user?.id, chatFriend]);
 
   useEffect(() => {
     if (user?.points && user.points > prevPoints && prevPoints > 0) {
@@ -369,7 +402,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   return (
     <>
       <CoinToast points={coinToast.points} visible={coinToast.visible} onDone={() => setCoinToast(v => ({ ...v, visible: false }))} />
-      {chatFriend && <FriendChatModal friend={chatFriend} currentUser={user} onClose={() => setChatFriend(null)} />}
+      {chatFriend && <FriendChatModal friend={chatFriend} currentUser={user} onClose={() => setChatFriend(null)} onlineUsers={onlineUsers} />}
       {showAvatarModal && <AvatarPickerModal current={user?.avatarIndex} onClose={() => setShowAvatarModal(false)} onSave={async (newIndex) => { try { updateUser({ avatarIndex: newIndex }); setShowAvatarModal(false); await axios.put('/api/auth/profile', { avatarIndex: newIndex }); } catch (err) {} }} />}
 
       <div className="space-y-6 pb-24">
@@ -567,7 +600,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                 <h3 className="text-sm font-bold text-white mb-3">Friends ({friends.length})</h3>
                 <div className="space-y-3">
                   {friends.map(f => {
-                    const isActive = f.lastActiveDate === new Date().toISOString().split('T')[0];
+                    const isActive = onlineUsers[f.id] || f.lastActiveDate === new Date().toISOString().split('T')[0];
                     const unread = unreadCounts[f.id] || 0;
                     return (
                     <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all">
