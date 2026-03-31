@@ -72,7 +72,7 @@ function LeaderboardBar({ data, currentUserId }) {
               <AvatarDisplay index={user.avatarIndex ?? 0} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className={clsx('text-sm font-semibold truncate', isMe ? 'text-forest-300' : 'text-white')}>
-                  {isMe ? 'You' : user.name}
+                  {isMe ? 'You' : `@${user.username || user.name}`}
                   {isMe && <span className="ml-1.5 text-xs bg-forest-500/20 text-forest-400 px-1.5 py-0.5 rounded-full">you</span>}
                 </p>
                 <p className="text-xs text-forest-500">
