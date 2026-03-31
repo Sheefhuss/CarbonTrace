@@ -1,6 +1,3 @@
-// FILE: backend/routes/users.js
-// FIX: Added 'friend_made' to BADGE_POINTS (was missing, falling back to 10 pts silently)
-// FIX: Auto-award 'friend_made' badge when friend is connected
 
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
