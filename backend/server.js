@@ -6,10 +6,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-
 const { sequelize } = require('./models');
 const logger = require('./utils/logger');
-
 const authRoutes = require('./routes/auth_backend.js');
 const userRoutes = require('./routes/users');
 const emissionRoutes = require('./routes/emissions');
@@ -21,7 +19,6 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -33,7 +30,6 @@ const io = new Server(server, {
 });
 
 app.use(helmet());
-
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
@@ -100,11 +96,16 @@ app.use('*', (req, res) => {
 
 app.use(errorHandler);
 
+const activeUsers = new Map();
+
 io.on('connection', (socket) => {
   logger.info(`New client connected: ${socket.id}`);
 
   socket.on('user_online', (userId) => {
+    activeUsers.set(socket.id, userId);
     io.emit('status_update', { userId, status: 'online' });
+    const currentlyOnline = Array.from(new Set(activeUsers.values()));
+    socket.emit('sync_online_users', currentlyOnline);
   });
 
   socket.on('send_message', (messageData) => {
@@ -112,6 +113,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    const userId = activeUsers.get(socket.id);
+    if (userId) {
+      activeUsers.delete(socket.id);
+      const hasOtherTabs = Array.from(activeUsers.values()).includes(userId);
+      if (!hasOtherTabs) {
+        io.emit('status_update', { userId, status: 'offline' });
+      }
+    }
     logger.info(`Client disconnected: ${socket.id}`);
   });
 });
@@ -120,16 +129,13 @@ const startServer = async () => {
   try {
     await sequelize.authenticate();
     logger.info('Database connected successfully.');
-
     await sequelize.sync({ alter: true });
     logger.info('Database synced.');
-
     const requiredEnv = ['JWT_SECRET', 'FRONTEND_URL'];
     const missing = requiredEnv.filter(k => !process.env[k]);
     if (missing.length) {
       logger.warn(`Missing critical env vars: ${missing.join(', ')}`);
     }
-
     server.listen(PORT, () => {
       logger.info(`CarbonTrace server running on port ${PORT}`);
     });
