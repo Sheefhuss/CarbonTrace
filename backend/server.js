@@ -85,3 +85,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+module.exports = { app, server, io };
