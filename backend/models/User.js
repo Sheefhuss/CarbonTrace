@@ -53,7 +53,6 @@ module.exports = (sequelize) => sequelize.define('User', {
   weeklyGoalKg: { type: DataTypes.FLOAT, allowNull: true },
   friendCode: {
     type: DataTypes.STRING(8),
-    unique: true,
     comment: '8-char uppercase code users share to connect as friends',
   },
   friends: {
@@ -79,4 +78,8 @@ module.exports = (sequelize) => sequelize.define('User', {
     withPassword: { attributes: {} },
     withEmail: { attributes: { exclude: ['passwordHash', 'verificationToken', 'resetPasswordToken'] } },
   },
+  indexes: [
+    { unique: true, fields: ['friendCode'], where: { friendCode: { [require('sequelize').Op.ne]: null } } },
+    { unique: true, fields: ['email'] },
+  ],
 });
