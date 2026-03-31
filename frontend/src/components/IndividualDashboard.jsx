@@ -13,8 +13,6 @@ import {
 } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
-
-// ── Subway-Surfer style coin toast ───────────────────────────────────────────
 function CoinToast({ points, visible, onDone }) {
   useEffect(() => {
     if (visible) {
