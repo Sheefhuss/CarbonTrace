@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './context/authStore';
+import socket from './socket';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -8,6 +9,7 @@ import QuizPage from './pages/QuizPage';
 import DashboardPage from './pages/DashboardPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+
 const ProtectedRoute = ({ children }) => {
   const { token, isInitializing } = useAuthStore();
 
@@ -20,15 +22,23 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!token) return <Navigate to="/login" replace />;
-  return children; // ← no CarbonBot here anymore
+  return children; 
 };
 
 function App() {
-  const initialize = useAuthStore(state => state.initialize);
+  const { token, initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialize]);
+
+  useEffect(() => {
+    if (token) {
+      socket.connect();
+    } else {
+      socket.disconnect();
+    }
+  }, [token]);
 
   return (
     <Router>
@@ -44,7 +54,6 @@ function App() {
         } />
         <Route path="/dashboard" element={
           <ProtectedRoute><DashboardPage /></ProtectedRoute>
-          // DashboardPage renders CarbonBot internally with user + emissions
         } />
       </Routes>
     </Router>
