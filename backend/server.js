@@ -78,10 +78,8 @@ const startServer = async () => {
     await sequelize.authenticate();
     logger.info('✅ Database connected successfully.');
 
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync();
-      logger.info('✅ Database synced.');
-    }
+    await sequelize.sync({ alter: true });
+    logger.info('✅ Database synced.');
 
     app.listen(PORT, () => {
       logger.info(`🚀 CarbonTrace server running on port ${PORT}`);
@@ -97,7 +95,7 @@ const startServer = async () => {
         }, { timezone: 'Asia/Kolkata' });
         logger.info('✅ Weekly email cron scheduled (Mondays 8am IST).');
       } catch (err) {
-        logger.warn('⚠️  node-cron not installed — weekly emails disabled. Run: npm install node-cron nodemailer');
+        logger.warn('⚠️  node-cron not installed — weekly emails disabled.');
       }
     }
   } catch (err) {
