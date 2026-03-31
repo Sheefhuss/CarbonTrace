@@ -5,9 +5,9 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const { sequelize } = require('./models');
 const logger = require('./utils/logger');
+
 const authRoutes = require('./routes/auth_backend.js');
 const userRoutes = require('./routes/users');
 const emissionRoutes = require('./routes/emissions');
@@ -34,6 +34,10 @@ app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+}
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/emissions', emissionRoutes);
@@ -50,8 +54,7 @@ io.on('connection', (socket) => {
   socket.on('user_online', (userId) => {
     activeUsers.set(socket.id, userId);
     io.emit('status_update', { userId, status: 'online' });
-    const currentlyOnline = Array.from(new Set(activeUsers.values()));
-    socket.emit('sync_online_users', currentlyOnline);
+    socket.emit('sync_online_users', Array.from(new Set(activeUsers.values())));
   });
 
   socket.on('send_message', (messageData) => {
@@ -66,8 +69,7 @@ io.on('connection', (socket) => {
     const userId = activeUsers.get(socket.id);
     if (userId) {
       activeUsers.delete(socket.id);
-      const stillConnected = Array.from(activeUsers.values()).includes(userId);
-      if (!stillConnected) {
+      if (!Array.from(activeUsers.values()).includes(userId)) {
         io.emit('status_update', { userId, status: 'offline' });
       }
     }
@@ -80,6 +82,7 @@ const startServer = async () => {
     await sequelize.sync({ alter: true });
     server.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
   } catch (err) {
+    logger.error('Database connection failed:', err);
     process.exit(1);
   }
 };
