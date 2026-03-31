@@ -116,8 +116,11 @@ function FriendChatModal({ friend, currentUser, onClose }) {
       const res = await axios.post(`/api/users/messages/${friend.id}`, { text });
       setMessages(prev => [...prev, res.data]);
       setInput('');
-    } catch {}
-    setSending(false);
+    } catch (err) {
+      console.error('Send failed:', err?.response?.data || err.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKey = (e) => {
@@ -189,7 +192,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
               <Send size={14} className="text-white" />
             </button>
           </div>
-          <p className="text-xs text-forest-600 text-center mt-1">Messages saved locally on your device</p>
+          <p className="text-xs text-forest-600 text-center mt-1">Messages are synced in real time</p>
         </div>
       </div>
     </div>
