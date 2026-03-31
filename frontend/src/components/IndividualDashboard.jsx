@@ -13,6 +13,7 @@ import {
 } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
+
 function CoinToast({ points, visible, onDone }) {
   useEffect(() => {
     if (visible) {
@@ -24,9 +25,7 @@ function CoinToast({ points, visible, onDone }) {
   if (!visible) return null;
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] pointer-events-none">
-      <div className="flex items-center gap-2 px-5 py-3 rounded-2xl shadow-2xl border border-amber-400/40
-                      bg-gradient-to-r from-amber-500 to-yellow-400
-                      animate-[coinPop_2.2s_ease-out_forwards]">
+      <div className="flex items-center gap-2 px-5 py-3 rounded-2xl shadow-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500 to-yellow-400 animate-[coinPop_2.2s_ease-out_forwards]">
         <span className="text-2xl animate-[coinSpin_0.4s_ease-in-out_infinite]">🪙</span>
         <div>
           <p className="text-amber-950 font-black text-lg leading-none">+{points} pts</p>
@@ -37,7 +36,6 @@ function CoinToast({ points, visible, onDone }) {
   );
 }
 
-// ── Leaderboard bar chart ────────────────────────────────────────────────────
 function LeaderboardBar({ data, currentUserId }) {
   const top = data.slice(0, 8);
   const maxScore = Math.max(...top.map(u => u.score), 1);
@@ -49,11 +47,7 @@ function LeaderboardBar({ data, currentUserId }) {
         const pct = Math.round((user.score / maxScore) * 100);
         const isMe = user.id === currentUserId || user.isYou;
         return (
-          <div key={user.id} className={clsx(
-            'relative rounded-xl overflow-hidden',
-            isMe ? 'ring-2 ring-forest-400' : ''
-          )}>
-            {/* Background bar */}
+          <div key={user.id} className={clsx('relative rounded-xl overflow-hidden', isMe ? 'ring-2 ring-forest-400' : '')}>
             <div className="absolute inset-0 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }} />
             <div
               className="absolute inset-y-0 left-0 rounded-xl transition-all duration-700"
@@ -64,7 +58,6 @@ function LeaderboardBar({ data, currentUserId }) {
                   : 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
               }}
             />
-            {/* Content */}
             <div className="relative flex items-center gap-3 px-3 py-2.5">
               <span className="text-lg w-6 text-center shrink-0">
                 {medals[i] || <span className="text-forest-500 font-bold text-sm">{i + 1}</span>}
@@ -91,7 +84,6 @@ function LeaderboardBar({ data, currentUserId }) {
   );
 }
 
-// ── Chat helpers ─────────────────────────────────────────────────────────────
 function getDateLabel(dateStr) {
   const today = new Date();
   const yesterday = new Date(today);
@@ -116,7 +108,6 @@ function groupMessagesByDate(messages) {
   return groups;
 }
 
-// ── Friend Chat Modal ────────────────────────────────────────────────────────
 function FriendChatModal({ friend, currentUser, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -132,7 +123,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
         .catch(() => {});
     };
     fetchMessages();
-    const interval = setInterval(fetchMessages, 4000);
+    const interval = setInterval(fetchMessages, 5000); 
     return () => clearInterval(interval);
   }, [friend.id]);
 
@@ -185,19 +176,12 @@ function FriendChatModal({ friend, currentUser, onClose }) {
   const grouped = groupMessagesByDate(messages);
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={() => setDeleteMenu(null)}>
-      <div className="w-full sm:max-w-md bg-forest-900 border border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col h-[70vh] sm:h-[520px]"
-        onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDeleteMenu(null)}>
+      <div className="w-full sm:max-w-md bg-forest-900 border border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col h-[70vh] sm:h-[520px]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 p-4 border-b border-white/10 shrink-0">
           <div className="relative">
             <AvatarDisplay index={friend.avatarIndex ?? 0} size="md" />
-            <span className={clsx(
-              'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900',
-              isOnline ? 'bg-green-400' : 'bg-forest-600'
-            )} />
+            <span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', isOnline ? 'bg-green-400' : 'bg-forest-600')} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-white">{friend.name}</p>
@@ -210,8 +194,6 @@ function FriendChatModal({ friend, currentUser, onClose }) {
             <X size={16} />
           </button>
         </div>
-
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
           {messages.length === 0 && (
             <div className="text-center text-forest-500 text-sm mt-8">
@@ -237,33 +219,14 @@ function FriendChatModal({ friend, currentUser, onClose }) {
               <div key={msg.id} className={clsx('flex gap-2 group', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
                 <div className="relative max-w-[75%]">
-                  <div
-                    className={clsx(
-                      'px-3 py-2 rounded-2xl text-sm cursor-pointer select-none',
-                      isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 border border-white/5 rounded-tl-sm'
-                    )}
-                    onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}
-                  >
+                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer select-none', isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 border border-white/5 rounded-tl-sm')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
                     <p>{msg.text}</p>
                     <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
                   </div>
                   {deleteMenu === msg.id && (
-                    <div className={clsx(
-                      'absolute z-10 mt-1 bg-forest-800 border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[160px]',
-                      isMe ? 'right-0' : 'left-0'
-                    )}>
-                      <button
-                        onClick={() => handleDeleteForMe(msg.id)}
-                        className="w-full text-left px-4 py-2.5 text-xs text-forest-200 hover:bg-white/10 transition-all">
-                        🙈 Delete for me
-                      </button>
-                      {isMe && (
-                        <button
-                          onClick={() => handleDeleteForEveryone(msg.id)}
-                          className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all border-t border-white/5">
-                          🗑️ Delete for everyone
-                        </button>
-                      )}
+                    <div className={clsx('absolute z-10 mt-1 bg-forest-800 border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[160px]', isMe ? 'right-0' : 'left-0')}>
+                      <button onClick={() => handleDeleteForMe(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-forest-200 hover:bg-white/10 transition-all">🙈 Delete for me</button>
+                      {isMe && <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all border-t border-white/5">🗑️ Delete for everyone</button>}
                     </div>
                   )}
                 </div>
@@ -272,26 +235,10 @@ function FriendChatModal({ friend, currentUser, onClose }) {
           })}
           <div ref={bottomRef} />
         </div>
-
-        {/* Input */}
         <div className="p-3 border-t border-white/10 shrink-0">
           <div className="flex gap-2 items-end">
-            <textarea
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder={`Message ${friend.name.split(' ')[0]}…`}
-              className="flex-1 resize-none bg-white/8 border border-white/10 rounded-xl px-3 py-2
-                         text-sm text-white placeholder:text-forest-500 focus:outline-none
-                         focus:ring-2 focus:ring-forest-400 focus:border-transparent max-h-24"
-              style={{ color: 'white', WebkitTextFillColor: 'white' }}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || sending}
-              className="w-9 h-9 rounded-xl bg-forest-500 hover:bg-forest-400 disabled:opacity-40
-                         flex items-center justify-center transition-all active:scale-95 shrink-0">
+            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder={`Message ${friend.name.split(' ')[0]}…`} className="flex-1 resize-none bg-white/8 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-forest-500 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent max-h-24" style={{ color: 'white', WebkitTextFillColor: 'white' }} />
+            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-9 h-9 rounded-xl bg-forest-500 hover:bg-forest-400 disabled:opacity-40 flex items-center justify-center transition-all active:scale-95 shrink-0">
               <Send size={14} className="text-white" />
             </button>
           </div>
@@ -302,9 +249,6 @@ function FriendChatModal({ friend, currentUser, onClose }) {
   );
 }
 
-// ── Main Dashboard ───────────────────────────────────────────────────────────
-// FIX: emissions, emissionsLoading, refetch are now passed from DashboardPage
-// so there is a single useEmissions instance — avoids stale data after logging
 export default function IndividualDashboard({ setShowLogModal, emissions, emissionsLoading, refetch }) {
   const { user, updateUser } = useAuthStore();
   const [leaderboard, setLeaderboard] = useState([]);
@@ -321,91 +265,65 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   
   const { tips, loading: tipsLoading, generateTips } = useAITips(emissions, user, location);
-
   const dailyFact = getDailyFact();
   const badges = computeBadges(user, emissions);
 
-  // Detect location once
   useEffect(() => {
     detectUserLocation().then(loc => { if (loc) setLocation(loc); });
   }, []);
 
-  // Generate AI tips when emissions load
   useEffect(() => {
     if (emissions.length > 0 && !tips) generateTips();
   }, [emissions.length, tips, generateTips]);
 
-  // Load leaderboard
   useEffect(() => {
-    axios.get('/api/dashboard/leaderboard')
-      .then(r => setLeaderboard(r.data.leaderboard || []))
-      .catch(() => {});
+    axios.get('/api/dashboard/leaderboard').then(r => setLeaderboard(r.data.leaderboard || [])).catch(() => {});
   }, []);
 
-  // Load friends
   useEffect(() => {
-    axios.get('/api/users/friends')
-      .then(r => setFriends(r.data || []))
-      .catch(() => {});
+    axios.get('/api/users/friends').then(r => setFriends(r.data || [])).catch(() => {});
   }, [user?.id]);
 
-  // Fetch unread counts for each friend
   useEffect(() => {
     if (!friends.length) return;
-    friends.forEach(f => {
-      axios.get(`/api/users/messages/${f.id}`)
-        .then(r => {
-          const msgs = r.data || [];
-          const unread = msgs.filter(m => m.senderId === f.id && !m.readAt).length;
-          setUnreadCounts(prev => ({ ...prev, [f.id]: unread }));
-        })
+    const fetchAllUnread = () => {
+      axios.get('/api/users/messages/unread-counts')
+        .then(r => setUnreadCounts(r.data || {}))
         .catch(() => {});
-    });
-    const interval = setInterval(() => {
-      friends.forEach(f => {
-        axios.get(`/api/users/messages/${f.id}`)
-          .then(r => {
-            const msgs = r.data || [];
-            const unread = msgs.filter(m => m.senderId === f.id && !m.readAt).length;
-            setUnreadCounts(prev => ({ ...prev, [f.id]: unread }));
-          })
-          .catch(() => {});
-      });
-    }, 8000);
+    };
+    fetchAllUnread();
+    const interval = setInterval(fetchAllUnread, 15000);
     return () => clearInterval(interval);
   }, [friends.length]);
 
-  // Coin toast when points change
   useEffect(() => {
     if (user?.points && user.points > prevPoints && prevPoints > 0) {
       const diff = user.points - prevPoints;
       setCoinToast({ visible: true, points: diff });
     }
     if (user?.points) setPrevPoints(user.points);
-  }, [user?.points]);
+  }, [user?.points, prevPoints]);
 
-  // Award badges automatically
   useEffect(() => {
-    if (!emissions.length) return;
+    if (!emissions.length || !user) return;
     const allBadges = computeBadges(user, emissions);
-    allBadges.forEach(async (b) => {
-      if (b.earned && !user?.earnedBadges?.includes(b.id)) {
-        try {
-          const res = await axios.post('/api/users/award-badge', { badgeId: b.id });
-          if (res.data.earned) updateUser({ points: res.data.totalPoints, earnedBadges: res.data.badges });
-        } catch {}
-      }
-    });
-  }, [emissions.length]);
+    const newBadges = allBadges.filter(b => b.earned && !user?.earnedBadges?.includes(b.id));
 
-  // Monthly stats
+    newBadges.forEach(async (b) => {
+      try {
+        const res = await axios.post('/api/users/award-badge', { badgeId: b.id });
+        if (res.data.earned) {
+            updateUser({ points: res.data.totalPoints, earnedBadges: res.data.badges });
+        }
+      } catch (err) {}
+    });
+  }, [emissions.length, user]);
+
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const monthlyEmissions = emissions.filter(e => e.date >= startOfMonth);
   const monthlyKg = monthlyEmissions.reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
   const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
-
-  // Challenge progress
   const weekKey = getCurrentWeekKey();
   const challenges = CHALLENGES.map(c => {
     const progress = c.check(emissions, user);
@@ -416,14 +334,12 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   });
 
   const handleCompleteChallenge = async (challenge) => {
-    if (challenge.completed) return;
-    if (challenge.pct < 100) return;
+    if (challenge.completed || challenge.pct < 100) return;
     try {
       const res = await axios.post('/api/users/complete-challenge', { challengeId: challenge.id });
       if (res.data.completed) {
         updateUser({ points: res.data.totalPoints });
         setCoinToast({ visible: true, points: res.data.pointsAwarded });
-        // Refresh user
         const me = await axios.get('/api/auth/me');
         updateUser(me.data.user);
       }
@@ -447,94 +363,39 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     }
   };
 
-  const locationLabel = location?.city
-    ? `${location.city}${location.state ? ', ' + location.state : ''}`
-    : COUNTRY_AVERAGES[user?.country]?.name || 'Your area';
-
+  const locationLabel = location?.city ? `${location.city}${location.state ? ', ' + location.state : ''}` : COUNTRY_AVERAGES[user?.country]?.name || 'Your area';
   const tabs = ['overview', 'challenges', 'leaderboard', 'friends', 'badges'];
 
   return (
     <>
-      {/* Coin Toast */}
-      <CoinToast
-        points={coinToast.points}
-        visible={coinToast.visible}
-        onDone={() => setCoinToast(v => ({ ...v, visible: false }))}
-      />
-
-      {/* Friend Chat Modal */}
-      {chatFriend && (
-        <FriendChatModal
-          friend={chatFriend}
-          currentUser={user}
-          onClose={() => setChatFriend(null)}
-        />
-      )}
-
-      {/* Avatar Picker Modal */}
-      {showAvatarModal && (
-        <AvatarPickerModal
-          current={user?.avatarIndex}
-          onClose={() => setShowAvatarModal(false)}
-          onSave={async (newIndex) => {
-            try {
-              updateUser({ avatarIndex: newIndex });
-              setShowAvatarModal(false);
-              await axios.put('/api/auth/profile', { avatarIndex: newIndex });
-            } catch (err) {
-              console.error("Failed to save avatar", err);
-            }
-          }}
-        />
-      )}
+      <CoinToast points={coinToast.points} visible={coinToast.visible} onDone={() => setCoinToast(v => ({ ...v, visible: false }))} />
+      {chatFriend && <FriendChatModal friend={chatFriend} currentUser={user} onClose={() => setChatFriend(null)} />}
+      {showAvatarModal && <AvatarPickerModal current={user?.avatarIndex} onClose={() => setShowAvatarModal(false)} onSave={async (newIndex) => { try { updateUser({ avatarIndex: newIndex }); setShowAvatarModal(false); await axios.put('/api/auth/profile', { avatarIndex: newIndex }); } catch (err) {} }} />}
 
       <div className="space-y-6 pb-24">
-
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setShowAvatarModal(true)} 
-              className="relative group rounded-xl overflow-hidden hover:ring-2 hover:ring-forest-400 transition-all cursor-pointer"
-              title="Change Avatar"
-            >
+            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden hover:ring-2 hover:ring-forest-400 transition-all cursor-pointer" title="Change Avatar">
               <AvatarDisplay index={user?.avatarIndex ?? 0} size="lg" />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="text-white text-xs font-bold">Edit</span>
               </div>
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">
-                Hi, {user?.name?.split(' ')[0]} 👋
-              </h1>
+              <h1 className="text-xl font-bold text-white">Hi, {user?.name?.split(' ')[0]} 👋</h1>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {user?.streakDays > 0 && (
-                  <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">
-                    🔥 {user.streakDays}d streak
-                  </span>
-                )}
-                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full shadow-sm shadow-amber-500/20">
-                  ⭐ {user?.points || 0} pts
-                </span>
-                {user?.weeklyPoints > 0 && (
-                  <span className="flex items-center gap-1 bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-bold px-2 py-0.5 rounded-full">
-                    🏅 {user.weeklyPoints} this week
-                  </span>
-                )}
-                {location?.city && (
-                  <span className="text-xs text-forest-500">📍 {location.city}</span>
-                )}
+                {user?.streakDays > 0 && <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">🔥 {user.streakDays}d streak</span>}
+                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full shadow-sm shadow-amber-500/20">⭐ {user?.points || 0} pts</span>
+                {user?.weeklyPoints > 0 && <span className="flex items-center gap-1 bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-bold px-2 py-0.5 rounded-full">🏅 {user.weeklyPoints} this week</span>}
+                {location?.city && <span className="text-xs text-forest-500">📍 {location.city}</span>}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowLogModal(true)}
-            className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5">
+          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5">
             <Plus size={16} /> Log
           </button>
         </div>
 
-        {/* ── This month card ────────────────────────────────────────────────── */}
         <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -544,13 +405,8 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
             <div className="text-right">
               <p className="text-xs text-forest-500">vs local avg</p>
               {monthlyKg > 0 ? (
-                <p className={clsx(
-                  'text-lg font-bold',
-                  monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400'
-                )}>
-                  {monthlyKg < countryAvg
-                    ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below`
-                    : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above`}
+                <p className={clsx('text-lg font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
+                  {monthlyKg < countryAvg ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below` : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above`}
                 </p>
               ) : (
                 <p className="text-sm text-forest-500">Log to compare</p>
@@ -558,46 +414,25 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
               <p className="text-xs text-forest-600">avg: {formatCO2(countryAvg)}/mo</p>
             </div>
           </div>
-          {/* Progress bar */}
           <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-            <div
-              className={clsx(
-                'h-full rounded-full transition-all duration-700',
-                monthlyKg < countryAvg ? 'bg-forest-400' : 'bg-amber-400'
-              )}
-              style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }}
-            />
+            <div className={clsx('h-full rounded-full transition-all duration-700', monthlyKg < countryAvg ? 'bg-forest-400' : 'bg-amber-400')} style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} />
           </div>
-          <p className="text-xs text-forest-500 mt-2">
-            🌱 Tip: {dailyFact.emoji} {dailyFact.fact}
-          </p>
+          <p className="text-xs text-forest-500 mt-2">🌱 Tip: {dailyFact.emoji} {dailyFact.fact}</p>
         </div>
 
-        {/* ── Tab nav ─────────────────────────────────────────────────────────── */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto scrollbar-hide">
           {tabs.map(t => (
-            <button key={t} onClick={() => setActiveTab(t)}
-              className={clsx(
-                'flex-1 py-2 px-2 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap',
-                activeTab === t
-                  ? 'bg-forest-500 text-white shadow'
-                  : 'text-forest-400 hover:text-white'
-              )}>
+            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-2 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap', activeTab === t ? 'bg-forest-500 text-white shadow' : 'text-forest-400 hover:text-white')}>
               {t}
             </button>
           ))}
         </div>
 
-        {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* By category */}
             {monthlyEmissions.length > 0 && (() => {
               const bycat = {};
-              monthlyEmissions.forEach(e => {
-                bycat[e.category] = (bycat[e.category] || 0) + parseFloat(e.co2eKg || 0);
-              });
+              monthlyEmissions.forEach(e => { bycat[e.category] = (bycat[e.category] || 0) + parseFloat(e.co2eKg || 0); });
               const sorted = Object.entries(bycat).sort(([,a],[,b]) => b - a);
               const total = sorted.reduce((s,[,v]) => s+v, 0);
               const catColors = { transport:'#40926d', food:'#64b18c', shopping:'#97ceb1', housing:'#f59e0b', industrial:'#ef4444', other:'#6b7280' };
@@ -612,8 +447,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                           <span className="text-forest-400">{formatCO2(kg)}</span>
                         </div>
                         <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${Math.round((kg/total)*100)}%`, backgroundColor: catColors[cat] || '#6b7280' }} />
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round((kg/total)*100)}%`, backgroundColor: catColors[cat] || '#6b7280' }} />
                         </div>
                       </div>
                     ))}
@@ -622,12 +456,9 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
               );
             })()}
 
-            {/* AI Tips */}
             <div className="card">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>🤖</span> Personalised Tips
-                </h3>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
                 {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin" />}
               </div>
               {(tips || FALLBACK_TIPS_STATIC).map((tip, i) => (
@@ -642,7 +473,6 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
               ))}
             </div>
 
-            {/* Recent logs */}
             {emissions.slice(0, 5).length > 0 && (
               <div className="card">
                 <h3 className="text-sm font-bold text-white mb-3">Recent Activity</h3>
@@ -653,12 +483,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                         <p className="text-sm text-white capitalize">{e.subCategory || e.category}</p>
                         <p className="text-xs text-forest-500">{fmtDate(e.date)} · {e.quantity} {e.unit}</p>
                       </div>
-                      <span className={clsx(
-                        'text-sm font-bold',
-                        parseFloat(e.co2eKg) <= 2 ? 'text-forest-400' : 'text-white'
-                      )}>
-                        {formatCO2(parseFloat(e.co2eKg))}
-                      </span>
+                      <span className={clsx('text-sm font-bold', parseFloat(e.co2eKg) <= 2 ? 'text-forest-400' : 'text-white')}>{formatCO2(parseFloat(e.co2eKg))}</span>
                     </div>
                   ))}
                 </div>
@@ -667,16 +492,11 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* CHALLENGES TAB */}
         {activeTab === 'challenges' && (
           <div className="space-y-3">
             <p className="text-xs text-forest-500 text-center">Weekly challenges reset every Monday</p>
             {challenges.filter(c => !c.completed).map(c => (
-              <div key={c.id} className={clsx(
-                'card border-2 transition-all',
-                c.completed ? 'border-forest-400/40 bg-forest-500/10' : 'border-white/5'
-              )}>
+              <div key={c.id} className={clsx('card border-2 transition-all', c.completed ? 'border-forest-400/40 bg-forest-500/10' : 'border-white/5')}>
                 <div className="flex items-start gap-3">
                   <span className="text-2xl shrink-0">{c.icon}</span>
                   <div className="flex-1 min-w-0">
@@ -691,18 +511,13 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                         <span className="text-amber-400 font-bold">+{c.points} pts</span>
                       </div>
                       <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-                        <div
-                          className={clsx('h-full rounded-full transition-all duration-500', c.completed ? 'bg-forest-400' : 'bg-forest-600')}
-                          style={{ width: `${c.pct}%` }}
-                        />
+                        <div className={clsx('h-full rounded-full transition-all duration-500', c.completed ? 'bg-forest-400' : 'bg-forest-600')} style={{ width: `${c.pct}%` }} />
                       </div>
                     </div>
                   </div>
                 </div>
                 {c.pct >= 100 && !c.completed && (
-                  <button
-                    onClick={() => handleCompleteChallenge(c)}
-                    className="mt-3 w-full btn-primary py-2 text-sm flex items-center justify-center gap-2">
+                  <button onClick={() => handleCompleteChallenge(c)} className="mt-3 w-full btn-primary py-2 text-sm flex items-center justify-center gap-2">
                     🪙 Claim {c.points} pts
                   </button>
                 )}
@@ -711,74 +526,42 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* LEADERBOARD TAB */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-4">
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Trophy size={16} className="text-amber-400" /> Global Leaderboard
-                </h3>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><Trophy size={16} className="text-amber-400" /> Global Leaderboard</h3>
                 <p className="text-xs text-forest-500">Score = activity + streak + badges</p>
               </div>
-              {leaderboard.length > 0 ? (
-                <LeaderboardBar data={leaderboard} currentUserId={user?.id} />
-              ) : (
-                <p className="text-center text-forest-500 text-sm py-4">Loading…</p>
-              )}
+              {leaderboard.length > 0 ? <LeaderboardBar data={leaderboard} currentUserId={user?.id} /> : <p className="text-center text-forest-500 text-sm py-4">Loading…</p>}
             </div>
             {leaderboard.find(u => u.isYou) && (
               <div className="card bg-forest-500/10 border border-forest-400/20 text-center">
                 <p className="text-forest-300 text-sm">
-                  Your rank: <span className="text-white font-bold">#{leaderboard.find(u => u.isYou)?.rank}</span>
-                  {' '}out of {leaderboard.length} players
+                  Your rank: <span className="text-white font-bold">#{leaderboard.find(u => u.isYou)?.rank}</span> out of {leaderboard.length} players
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* FRIENDS TAB */}
         {activeTab === 'friends' && (
           <div className="space-y-4">
-            {/* Your code */}
             <div className="card text-center">
               <p className="text-xs text-forest-400 uppercase tracking-widest mb-2">Your Friend Code</p>
-              <p className="text-3xl font-black text-white tracking-[0.2em] font-mono">
-                {user?.friendCode || '—'}
-              </p>
+              <p className="text-3xl font-black text-white tracking-[0.2em] font-mono">{user?.friendCode || '—'}</p>
               <p className="text-xs text-forest-500 mt-2">Share this code so friends can add you</p>
             </div>
 
-            {/* Add friend */}
             <div className="card">
               <h3 className="text-sm font-bold text-white mb-3">Add a Friend</h3>
               <form onSubmit={handleAddFriend} className="flex gap-2">
-                <input
-                  value={friendCode}
-                  onChange={e => setFriendCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
-                  placeholder="Enter 8-char code"
-                  maxLength={8}
-                  className="input flex-1 font-mono tracking-widest text-sm"
-                  style={{ color: 'white', WebkitTextFillColor: 'white' }}
-                />
-                <button
-                  type="submit"
-                  disabled={addingFriend || friendCode.length !== 8}
-                  className="btn-primary text-sm px-4 disabled:opacity-40">
-                  {addingFriend ? '…' : 'Add'}
-                </button>
+                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="Enter 8-char code" maxLength={8} className="input flex-1 font-mono tracking-widest text-sm" style={{ color: 'white', WebkitTextFillColor: 'white' }} />
+                <button type="submit" disabled={addingFriend || friendCode.length !== 8} className="btn-primary text-sm px-4 disabled:opacity-40">{addingFriend ? '…' : 'Add'}</button>
               </form>
-              {friendMsg && (
-                <p className={clsx('text-xs mt-2', friendMsg.startsWith('✅') ? 'text-forest-400' : 'text-red-400')}>
-                  {friendMsg}
-                </p>
-              )}
+              {friendMsg && <p className={clsx('text-xs mt-2', friendMsg.startsWith('✅') ? 'text-forest-400' : 'text-red-400')}>{friendMsg}</p>}
             </div>
 
-            {/* Friend list */}
             {friends.length > 0 ? (
               <div className="card">
                 <h3 className="text-sm font-bold text-white mb-3">Friends ({friends.length})</h3>
@@ -790,36 +573,21 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                     <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all">
                       <div className="relative">
                         <AvatarDisplay index={f.avatarIndex ?? 0} size="md" />
-                        <span className={clsx(
-                          'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900',
-                          isActive ? 'bg-green-400' : 'bg-forest-600'
-                        )} />
+                        <span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', isActive ? 'bg-green-400' : 'bg-forest-600')} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-white">{f.name}</p>
                           {isActive && <span className="text-xs text-green-400 font-medium">● Active</span>}
                         </div>
-                        <p className="text-xs text-forest-400">
-                          🔥{f.streakDays}d · ⭐{f.points}pts
-                          {f.monthKg > 0 && ` · ${formatCO2(f.monthKg)} this month`}
-                        </p>
+                        <p className="text-xs text-forest-400">🔥{f.streakDays}d · ⭐{f.points}pts {f.monthKg > 0 && ` · ${formatCO2(f.monthKg)} this month`}</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {(f.earnedBadges || []).slice(0, 4).map((bid, i) => (
-                            <span key={i} className="text-sm">{getBadgeIcon(bid)}</span>
-                          ))}
+                          {(f.earnedBadges || []).slice(0, 4).map((bid, i) => <span key={i} className="text-sm">{getBadgeIcon(bid)}</span>)}
                         </div>
                       </div>
-                      <button
-                        onClick={() => { setChatFriend(f); setUnreadCounts(prev => ({ ...prev, [f.id]: 0 })); }}
-                        className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-500/20 hover:bg-forest-500/30 text-forest-300 text-xs font-semibold transition-all">
-                        <MessageCircle size={13} />
-                        Chat
-                        {unread > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center px-1">
-                            {unread > 9 ? '9+' : unread}
-                          </span>
-                        )}
+                      <button onClick={() => { setChatFriend(f); setUnreadCounts(prev => ({ ...prev, [f.id]: 0 })); }} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-500/20 hover:bg-forest-500/30 text-forest-300 text-xs font-semibold transition-all">
+                        <MessageCircle size={13} /> Chat
+                        {unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center px-1">{unread > 9 ? '9+' : unread}</span>}
                       </button>
                     </div>
                     );
@@ -836,36 +604,25 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* BADGES TAB */}
         {activeTab === 'badges' && (
           <div className="card">
             <h3 className="text-sm font-bold text-white mb-4">Achievements</h3>
             <div className="grid grid-cols-3 gap-3">
               {badges.map(b => (
-                <div key={b.id} className={clsx(
-                  'flex flex-col items-center gap-2 p-3 rounded-xl border-2 text-center transition-all',
-                  b.earned
-                    ? 'border-forest-400/40 bg-forest-500/15'
-                    : 'border-white/5 bg-white/3 opacity-40 grayscale'
-                )}>
+                <div key={b.id} className={clsx('flex flex-col items-center gap-2 p-3 rounded-xl border-2 text-center transition-all', b.earned ? 'border-forest-400/40 bg-forest-500/15' : 'border-white/5 bg-white/3 opacity-40 grayscale')}>
                   <span className="text-2xl">{b.icon}</span>
-                  <p className={clsx('text-xs font-bold leading-tight', b.earned ? 'text-white' : 'text-forest-500')}>
-                    {b.name}
-                  </p>
+                  <p className={clsx('text-xs font-bold leading-tight', b.earned ? 'text-white' : 'text-forest-500')}>{b.name}</p>
                   <p className="text-xs text-forest-500 leading-tight">{b.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
-
       </div>
     </>
   );
 }
 
-// Static fallback used before hook resolves
 const FALLBACK_TIPS_STATIC = [
   { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
   { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
@@ -873,8 +630,6 @@ const FALLBACK_TIPS_STATIC = [
 ];
 
 const BADGE_MAP = {
-  first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊',
-  fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝',
-  veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
+  first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊', fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝', veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
 };
 const getBadgeIcon = (id) => BADGE_MAP[id] || '🏅';
