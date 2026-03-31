@@ -1,6 +1,3 @@
-// FILE: backend/utils/weeklyEmail.js
-// FIX: Renamed from Weeklyemail.js → weeklyEmail.js (Linux is case-sensitive)
-
 const { Op, fn, col } = require('sequelize');
 const { User, EmissionEntry } = require('../models');
 const logger = require('./logger');
@@ -112,7 +109,7 @@ const sendWeeklyEmails = async () => {
   }
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    logger.warn('SMTP not configured — skipping weekly emails. Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env');
+    logger.warn('SMTP not configured — skipping weekly emails. Add SMTP_HOST, SMTP_USER, SMTP_PASS to your environment variables.');
     return;
   }
 
@@ -126,7 +123,6 @@ const sendWeeklyEmails = async () => {
     },
   });
 
-  // FIX: use scope 'withEmail' to actually get the email field (excluded by default scope)
   const users = await User.scope('withEmail').findAll({
     where: { weeklyEmailEnabled: true, role: 'individual' },
     attributes: ['id', 'name', 'email', 'country', 'streakDays', 'points'],
