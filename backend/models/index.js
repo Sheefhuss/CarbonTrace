@@ -24,6 +24,7 @@ const CarbonCredit = require('./CarbonCredit')(sequelize);
 const Organization = require('./Organization')(sequelize);
 const ScopeReport = require('./ScopeReport')(sequelize);
 const AuditLog = require('./AuditLog')(sequelize);
+const Message = require('./Message')(sequelize);
 
 // ─── Associations ──────────────────────────────────────────────────────────────
 
@@ -51,6 +52,11 @@ CarbonCredit.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(AuditLog, { foreignKey: 'userId', as: 'auditLogs' });
 AuditLog.belongsTo(User, { foreignKey: 'userId' });
 
+User.hasMany(Message, { foreignKey: 'senderId', as: 'sentMessages' });
+User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
+Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+Message.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
+
 module.exports = {
   sequelize,
   User,
@@ -60,4 +66,5 @@ module.exports = {
   Organization,
   ScopeReport,
   AuditLog,
+  Message,
 };
