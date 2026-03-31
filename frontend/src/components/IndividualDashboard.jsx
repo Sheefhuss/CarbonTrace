@@ -190,13 +190,20 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
           <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 flex items-center justify-center"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {messages.length === 0 && (
+            <div className="text-center text-forest-500 text-sm mt-8">
+              <span className="text-2xl block mb-2">🌿</span>
+              Start a conversation with {friend.name.split(' ')[0]}!<br />
+              <span className="text-xs">Messages are synced in real time.</span>
+            </div>
+          )}
           {grouped.map((item, idx) => {
             if (item.type === 'separator') {
               return (
-                <div key={`sep-${idx}`} className="flex items-center gap-2 py-2">
-                  <div className="flex-1 h-px bg-white/8" />
-                  <span className="text-xs text-forest-500 px-2 shrink-0">{item.label}</span>
-                  <div className="flex-1 h-px bg-white/8" />
+                <div key={`sep-${idx}`} className="flex items-center gap-2 py-3">
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-[10px] uppercase tracking-widest text-forest-500 px-3 font-bold">{item.label}</span>
+                  <div className="flex-1 h-px bg-white/5" />
                 </div>
               );
             }
@@ -207,13 +214,13 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
               <div key={msg.id} className={clsx('flex gap-2 group', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
                 <div className="relative max-w-[75%]">
-                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer', isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 rounded-tl-sm')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
+                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer transition-all', isMe ? 'bg-forest-500 text-white rounded-tr-sm hover:bg-forest-400' : 'bg-white/8 text-forest-100 rounded-tl-sm hover:bg-white/12')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
                     <p>{msg.text}</p>
-                    <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
+                    <p className={clsx('text-[10px] mt-1 text-right opacity-60')}>{time}</p>
                   </div>
                   {deleteMenu === msg.id && isMe && (
-                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl min-w-[160px]">
-                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-all">🗑️ Delete for everyone</button>
+                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl min-w-[160px] overflow-hidden">
+                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-all font-semibold">🗑️ Delete for everyone</button>
                     </div>
                   )}
                 </div>
@@ -222,10 +229,10 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
           })}
           <div ref={bottomRef} />
         </div>
-        <div className="p-3 border-t border-white/10 shrink-0">
+        <div className="p-3 border-t border-white/10 shrink-0 bg-forest-950/30">
           <div className="flex gap-2 items-end">
-            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} placeholder={`Message ${friend.name.split(' ')[0]}...`} className="flex-1 bg-white/8 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} />
-            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-9 h-9 rounded-xl bg-forest-500 flex items-center justify-center disabled:opacity-40"><Send size={14} className="text-white"/></button>
+            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} placeholder={`Message ${friend.name.split(' ')[0]}...`} className="flex-1 bg-white/8 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-forest-500 transition-all" onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} />
+            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-10 h-10 rounded-xl bg-forest-500 hover:bg-forest-400 flex items-center justify-center disabled:opacity-40 transition-all active:scale-95"><Send size={16} className="text-white"/></button>
           </div>
         </div>
       </div>
@@ -309,40 +316,40 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
       <div className="space-y-6 pb-24">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden cursor-pointer">
+            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden cursor-pointer shadow-lg shadow-black/20">
               <AvatarDisplay index={user?.avatarIndex ?? 0} size="lg" />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-white text-xs">Edit</div>
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Hi, {user?.name?.split(' ')[0]} 👋</h1>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">🔥 {user?.streakDays || 0}d streak</span>
-                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full">⭐ {user?.points || 0} pts</span>
+                <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">🔥 {user?.streakDays || 0}d streak</span>
+                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">⭐ {user?.points || 0} pts</span>
               </div>
             </div>
           </div>
-          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5"><Plus size={16} /> Log</button>
+          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5 shadow-lg shadow-forest-500/20"><Plus size={16} /> Log</button>
         </div>
 
-        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5 shadow-xl">
+        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5 shadow-xl border border-white/5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-forest-400 uppercase tracking-widest">This month</p>
-              <p className="text-3xl font-bold text-white mt-1">{formatCO2(monthlyKg)}</p>
+              <p className="text-[10px] text-forest-400 uppercase tracking-[0.2em] font-bold">This month</p>
+              <p className="text-3xl font-black text-white mt-1 tracking-tight">{formatCO2(monthlyKg)}</p>
             </div>
             <div className="text-right">
-              <p className={clsx('text-lg font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
+              <p className={clsx('text-base font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
                 {monthlyKg < countryAvg ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below avg` : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above avg`}
               </p>
             </div>
           </div>
-          <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden"><div className="h-full bg-forest-400 transition-all duration-700" style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} /></div>
-          <p className="text-xs text-forest-500 mt-2">🌱 Fact: {dailyFact.fact}</p>
+          <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-forest-400 transition-all duration-700 shadow-[0_0_10px_rgba(64,146,109,0.5)]" style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} /></div>
+          <p className="text-[11px] text-forest-500 mt-2 italic flex items-center gap-1.5"><Leaf size={12} /> Fact: {dailyFact.fact}</p>
         </div>
 
-        <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto">
+        <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto scrollbar-hide border border-white/5">
           {['overview', 'challenges', 'leaderboard', 'friends', 'badges'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-4 rounded-lg text-xs font-semibold capitalize transition-all', activeTab === t ? 'bg-forest-500 text-white shadow' : 'text-forest-400 hover:text-white')}>
+            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-4 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap', activeTab === t ? 'bg-forest-500 text-white shadow-lg' : 'text-forest-400 hover:text-white hover:bg-white/5')}>
               {t}
             </button>
           ))}
@@ -350,23 +357,23 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            <div className="card p-4">
-              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
-              {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin" />}
+            <div className="card p-4 border border-white/5 bg-white/2">
+              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
+              {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />}
               {(tips || []).map((tip, i) => (
-                <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/5 mb-2 last:mb-0">
+                <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/5 mb-2 last:mb-0 border border-white/5 hover:bg-white/8 transition-all">
                   <span className="text-xl shrink-0">{tip.icon}</span>
-                  <div><p className="text-sm font-semibold text-white">{tip.title}</p><p className="text-xs text-forest-300">{tip.desc}</p></div>
+                  <div><p className="text-sm font-bold text-white">{tip.title}</p><p className="text-xs text-forest-300 mt-0.5 leading-relaxed">{tip.desc}</p></div>
                 </div>
               ))}
             </div>
-            <div className="card p-4">
-              <h3 className="text-sm font-bold text-white mb-3">Recent Activity</h3>
-              <div className="space-y-2">
+            <div className="card p-4 border border-white/5 bg-white/2">
+              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4">Recent Activity</h3>
+              <div className="space-y-3">
                 {emissions.slice(0, 5).map(e => (
-                  <div key={e.id} className="flex justify-between py-1.5 border-b border-white/5 last:border-0">
-                    <div><p className="text-sm text-white capitalize">{e.category}</p><p className="text-xs text-forest-500">{fmtDate(e.date)}</p></div>
-                    <span className="text-sm font-bold text-white">{formatCO2(e.co2eKg)}</span>
+                  <div key={e.id} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                    <div><p className="text-sm font-bold text-white capitalize">{e.category}</p><p className="text-[10px] text-forest-500 font-medium uppercase mt-0.5">{fmtDate(e.date)}</p></div>
+                    <span className="text-sm font-black text-white bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">{formatCO2(e.co2eKg)}</span>
                   </div>
                 ))}
               </div>
@@ -376,25 +383,25 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
         {activeTab === 'friends' && (
           <div className="space-y-4">
-            <div className="card text-center p-4"><p className="text-xs text-forest-400 uppercase mb-2">Your Friend Code</p><p className="text-3xl font-black text-white tracking-[0.2em]">{user?.friendCode || '—'}</p></div>
-            <div className="card p-4">
-              <h3 className="text-sm font-bold text-white mb-3">Add Friend</h3>
+            <div className="card text-center p-5 border border-white/5 bg-gradient-to-br from-forest-800/20 to-transparent"><p className="text-[10px] text-forest-500 uppercase tracking-[0.2em] mb-2 font-bold">Your Friend Code</p><p className="text-3xl font-black text-white tracking-[0.3em] font-mono">{user?.friendCode || '—'}</p></div>
+            <div className="card p-4 border border-white/5 bg-white/2">
+              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4">Add Friend</h3>
               <form onSubmit={handleAddFriend} className="flex gap-2">
-                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase())} placeholder="8-char code" maxLength={8} className="input flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" />
-                <button type="submit" className="btn-primary text-sm px-4">Add</button>
+                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase())} placeholder="8-char code" maxLength={8} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-forest-500 font-mono tracking-widest placeholder:text-forest-700" />
+                <button type="submit" className="btn-primary text-[11px] px-5 font-bold uppercase tracking-wider shadow-lg shadow-forest-500/20">Add</button>
               </form>
-              {friendMsg && <p className="text-xs mt-2 text-forest-400">{friendMsg}</p>}
+              {friendMsg && <p className={clsx('text-[10px] mt-2 font-bold uppercase tracking-wide', friendMsg.includes('✅') ? 'text-forest-400' : 'text-red-400')}>{friendMsg}</p>}
             </div>
             <div className="space-y-3">
               {friends.map(f => (
-                <div key={f.id} className="card p-4 flex items-center justify-between">
+                <div key={f.id} className="card p-4 flex items-center justify-between border border-white/5 bg-white/2 hover:bg-white/4 transition-all">
                   <div className="flex items-center gap-3">
                     <div className="relative"><AvatarDisplay index={f.avatarIndex} size="md" /><span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', onlineUsers[f.id] ? 'bg-green-400' : 'bg-forest-600')} /></div>
-                    <div><p className="text-sm font-semibold text-white">{f.name}</p><p className="text-xs text-forest-400">🔥{f.streakDays}d · ⭐{f.points}pts</p></div>
+                    <div><p className="text-sm font-bold text-white">{f.name}</p><p className="text-[10px] text-forest-500 font-bold uppercase mt-0.5">🔥 {f.streakDays}d · ⭐ {f.points}pts</p></div>
                   </div>
-                  <button onClick={() => setChatFriend(f)} className="relative bg-forest-500/20 p-2 rounded-xl text-forest-300">
+                  <button onClick={() => setChatFriend(f)} className="relative bg-forest-500/10 hover:bg-forest-500/20 p-2.5 rounded-xl text-forest-300 transition-all active:scale-90 border border-white/5">
                     <MessageCircle size={18} />
-                    {unreadCounts[f.id] > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1 rounded-full">{unreadCounts[f.id]}</span>}
+                    {unreadCounts[f.id] > 0 && <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg ring-2 ring-forest-900">{unreadCounts[f.id]}</span>}
                   </button>
                 </div>
               ))}
@@ -402,13 +409,13 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           </div>
         )}
 
-        {activeTab === 'leaderboard' && <div className="card p-4"><h3 className="text-sm font-bold text-white mb-4">🏆 Global Ranking</h3><LeaderboardBar data={leaderboard} currentUserId={user?.id} /></div>}
+        {activeTab === 'leaderboard' && <div className="card p-4 border border-white/5 bg-white/2"><h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Trophy size={14} className="text-amber-400" /> Global Ranking</h3><LeaderboardBar data={leaderboard} currentUserId={user?.id} /></div>}
         
         {activeTab === 'badges' && (
           <div className="grid grid-cols-3 gap-3">
             {badges.map(b => (
-              <div key={b.id} className={clsx('card text-center p-3 flex flex-col items-center justify-center grayscale opacity-40', b.earned && 'grayscale-0 opacity-100 border-forest-400/40 bg-forest-500/10')}>
-                <span className="text-2xl">{b.icon}</span><p className="text-[10px] font-bold text-white mt-1 leading-tight">{b.name}</p>
+              <div key={b.id} className={clsx('card text-center p-3 flex flex-col items-center justify-center border transition-all', b.earned ? 'grayscale-0 opacity-100 border-forest-400/40 bg-forest-500/10 shadow-lg' : 'grayscale opacity-30 border-white/5 bg-white/2')}>
+                <span className="text-2xl mb-1.5">{b.icon}</span><p className="text-[9px] font-black text-white uppercase leading-tight tracking-tighter">{b.name}</p>
               </div>
             ))}
           </div>
@@ -417,3 +424,14 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     </>
   );
 }
+
+const FALLBACK_TIPS_STATIC = [
+  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
+  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
+  { icon: '💡', title: 'Switch to LED lighting', desc: 'LEDs use 75% less energy than old bulbs.', saving: 'Save ~80 kg/year' },
+];
+
+const BADGE_MAP = {
+  first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊', fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝', veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
+};
+const getBadgeIcon = (id) => BADGE_MAP[id] || '🏅';
