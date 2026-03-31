@@ -99,9 +99,14 @@ function FriendChatModal({ friend, currentUser, onClose }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    axios.get(`/api/users/messages/${friend.id}`)
-      .then(r => setMessages(r.data))
-      .catch(() => {});
+    const fetchMessages = () => {
+      axios.get(`/api/users/messages/${friend.id}`)
+        .then(r => setMessages(r.data))
+        .catch(() => {});
+    };
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 4000);
+    return () => clearInterval(interval);
   }, [friend.id]);
 
   useEffect(() => {
