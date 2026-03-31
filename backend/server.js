@@ -81,24 +81,6 @@ app.post('/api/cron/weekly-email', async (req, res, next) => {
   }
 });
 
-app.get('/admin/list-users', async (req, res) => {
-  const { User } = require('./models');
-  const users = await User.unscoped().findAll({
-    attributes: ['id', 'name', 'email', 'username', 'points'],
-  });
-  res.json(users);
-});
-
-app.get('/admin/delete-user/:username', async (req, res) => {
-  const { User, EmissionEntry, AuditLog } = require('./models');
-  const user = await User.unscoped().findOne({ where: { username: req.params.username } });
-  if (!user) return res.json({ error: 'Not found' });
-  await EmissionEntry.destroy({ where: { userId: user.id }, force: true });
-  await AuditLog.destroy({ where: { userId: user.id }, force: true }).catch(() => {});
-  await user.destroy({ force: true });
-  res.json({ deleted: user.username });
-});
-
 app.use('*', (req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });
