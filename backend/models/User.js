@@ -23,12 +23,10 @@ module.exports = (sequelize) => sequelize.define('User', {
   username: {
     type: DataTypes.STRING,
     allowNull: true,
-    comment: 'Public display handle e.g. @eco_ravi — never exposes email',
   },
   avatarIndex: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
-    comment: '0-14 — index into the cartoon avatar array on the frontend',
   },
   role: {
     type: DataTypes.ENUM('individual', 'business_admin', 'business_member', 'admin'),
@@ -53,17 +51,16 @@ module.exports = (sequelize) => sequelize.define('User', {
   weeklyGoalKg: { type: DataTypes.FLOAT, allowNull: true },
   friendCode: {
     type: DataTypes.STRING(8),
-    comment: '8-char uppercase code users share to connect as friends',
   },
   friends: {
     type: DataTypes.JSONB,
     defaultValue: [],
-    comment: 'Array of user IDs this user is connected with',
   },
   emailNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
   weeklyEmailEnabled: { type: DataTypes.BOOLEAN, defaultValue: true },
   isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
   verificationToken: { type: DataTypes.STRING },
+  verificationExpires: { type: DataTypes.DATE },
   resetPasswordToken: { type: DataTypes.STRING },
   resetPasswordExpires: { type: DataTypes.DATE },
 }, {
@@ -71,12 +68,16 @@ module.exports = (sequelize) => sequelize.define('User', {
   paranoid: true,
   defaultScope: {
     attributes: {
-      exclude: ['passwordHash', 'verificationToken', 'resetPasswordToken', 'email'],
+      exclude: ['passwordHash', 'verificationToken', 'verificationExpires', 'resetPasswordToken', 'email'],
     },
   },
   scopes: {
     withPassword: { attributes: {} },
-    withEmail: { attributes: { exclude: ['passwordHash', 'verificationToken', 'resetPasswordToken'] } },
+    withEmail: {
+      attributes: {
+        exclude: ['passwordHash', 'verificationToken', 'verificationExpires', 'resetPasswordToken'],
+      },
+    },
   },
   indexes: [
     { unique: true, fields: ['friendCode'], where: { friendCode: { [require('sequelize').Op.ne]: null } } },
