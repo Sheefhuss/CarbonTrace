@@ -126,7 +126,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
 
   useEffect(() => {
     const handleNewMessage = (msg) => {
-      if (msg.senderId === friend.id || (msg.receiverId === friend.id && msg.senderId === currentUser.id)) {
+      if (msg.senderId === friend.id) {
         setMessages(prev => {
           if (prev.find(m => m.id === msg.id)) return prev;
           return [...prev, msg];
@@ -145,7 +145,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
       socket.off('receive_message', handleNewMessage);
       socket.off('message_deleted', handleDeletedMessage);
     };
-  }, [friend.id, currentUser.id]);
+  }, [friend.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -161,7 +161,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
       socket.emit('send_message', res.data);
       setInput('');
     } catch (err) {
-      console.error('Send failed:', err?.response?.data || err.message);
+      console.error('Send failed:', err);
     } finally {
       setSending(false);
     }
@@ -605,7 +605,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
             <div className="card">
               <h3 className="text-sm font-bold text-white mb-3">Add a Friend</h3>
               <form onSubmit={handleAddFriend} className="flex gap-2">
-                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="Enter 8-char code" maxLength={8} className="input flex-1 font-mono tracking-widest text-sm" style={{ color: 'white', WebkitTextFillColor: 'white' }} />
+                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="Enter 8-char code" maxLength={8} className="input flex-1 font-mono tracking-widest text-sm" />
                 <button type="submit" disabled={addingFriend || friendCode.length !== 8} className="btn-primary text-sm px-4 disabled:opacity-40">{addingFriend ? '…' : 'Add'}</button>
               </form>
               {friendMsg && <p className={clsx('text-xs mt-2', friendMsg.startsWith('✅') ? 'text-forest-400' : 'text-red-400')}>{friendMsg}</p>}
@@ -627,7 +627,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-white">{f.name}</p>
-                          {isActive && <span className="text-xs text-green-400 font-medium">● Active</span>}
+                          {isActive && <span className="text-xs text-green-400 font-medium">● Online</span>}
                         </div>
                         <p className="text-xs text-forest-400">🔥{f.streakDays}d · ⭐{f.points}pts {f.monthKg > 0 && ` · ${formatCO2(f.monthKg)} this month`}</p>
                         <div className="flex flex-wrap gap-1 mt-1">
