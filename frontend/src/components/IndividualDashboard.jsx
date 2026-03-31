@@ -13,6 +13,8 @@ import {
 } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
+
+// ── Subway-Surfer style coin toast ───────────────────────────────────────────
 function CoinToast({ points, visible, onDone }) {
   useEffect(() => {
     if (visible) {
@@ -36,6 +38,8 @@ function CoinToast({ points, visible, onDone }) {
     </div>
   );
 }
+
+// ── Leaderboard bar chart ────────────────────────────────────────────────────
 function LeaderboardBar({ data, currentUserId }) {
   const top = data.slice(0, 8);
   const maxScore = Math.max(...top.map(u => u.score), 1);
@@ -88,37 +92,34 @@ function LeaderboardBar({ data, currentUserId }) {
     </div>
   );
 }
+
+// ── Friend Chat Modal ────────────────────────────────────────────────────────
 function FriendChatModal({ friend, currentUser, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
-  const CHAT_KEY = `chat_${[currentUser.id, friend.id].sort().join('_')}`;
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CHAT_KEY);
-      if (stored) setMessages(JSON.parse(stored));
-    } catch {}
-  }, [CHAT_KEY]);
+    axios.get(`/api/users/messages/${friend.id}`)
+      .then(r => setMessages(r.data))
+      .catch(() => {});
+  }, [friend.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
-    const msg = {
-      id: Date.now(),
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      text,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    };
-    const updated = [...messages, msg];
-    setMessages(updated);
-    try { localStorage.setItem(CHAT_KEY, JSON.stringify(updated.slice(-100))); } catch {}
-    setInput('');
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      const res = await axios.post(`/api/users/messages/${friend.id}`, { text });
+      setMessages(prev => [...prev, res.data]);
+      setInput('');
+    } catch {}
+    setSending(false);
   };
 
   const handleKey = (e) => {
@@ -146,11 +147,12 @@ function FriendChatModal({ friend, currentUser, onClose }) {
             <div className="text-center text-forest-500 text-sm mt-8">
               <span className="text-2xl block mb-2">🌿</span>
               Start a conversation with {friend.name.split(' ')[0]}!<br />
-              <span className="text-xs">Messages are stored on your device.</span>
+              <span className="text-xs">Messages are synced in real time.</span>
             </div>
           )}
           {messages.map(msg => {
             const isMe = msg.senderId === currentUser.id;
+            const time = new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             return (
               <div key={msg.id} className={clsx('flex gap-2', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
@@ -159,7 +161,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
                   isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 border border-white/5 rounded-tl-sm'
                 )}>
                   <p>{msg.text}</p>
-                  <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{msg.time}</p>
+                  <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
                 </div>
               </div>
             );
@@ -183,7 +185,7 @@ function FriendChatModal({ friend, currentUser, onClose }) {
             />
             <button
               onClick={sendMessage}
-              disabled={!input.trim()}
+              disabled={!input.trim() || sending}
               className="w-9 h-9 rounded-xl bg-forest-500 hover:bg-forest-400 disabled:opacity-40
                          flex items-center justify-center transition-all active:scale-95 shrink-0">
               <Send size={14} className="text-white" />
@@ -714,6 +716,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   );
 }
 
+// Static fallback used before hook resolves
 const FALLBACK_TIPS_STATIC = [
   { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
   { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
