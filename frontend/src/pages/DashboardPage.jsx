@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LogOut } from 'lucide-react';
 import useAuthStore from '../context/authStore';
@@ -9,7 +8,8 @@ import { useEmissions } from '../hooks/useData';
 
 export default function DashboardPage() {
   const { user, logout } = useAuthStore();
-  const { emissions } = useEmissions();
+  const { emissions, loading, refetch } = useEmissions();
+
   const [showLogModal, setShowLogModal] = useState(false);
 
   if (!user) return (
@@ -20,7 +20,13 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-forest-950 via-forest-900 to-forest-800">
-      {showLogModal && <LogActivityModal onClose={() => setShowLogModal(false)} />}
+      {/* FIX: pass refetch so modal triggers a refresh of THIS instance */}
+      {showLogModal && (
+        <LogActivityModal
+          onClose={() => setShowLogModal(false)}
+          onSaved={refetch}
+        />
+      )}
 
       <div className="max-w-5xl mx-auto px-4 py-6 md:px-8">
         <div className="flex justify-end mb-4">
@@ -29,16 +35,17 @@ export default function DashboardPage() {
             <LogOut size={16} /> Sign Out
           </button>
         </div>
-        <IndividualDashboard setShowLogModal={setShowLogModal} />
+
+        {/* FIX: pass emissions + refetch as props so IndividualDashboard
+            uses the same data instance instead of creating its own */}
+        <IndividualDashboard
+          setShowLogModal={setShowLogModal}
+          emissions={emissions}
+          emissionsLoading={loading}
+          refetch={refetch}
+        />
       </div>
 
-      {/*
-        CarbonBot is placed HERE (not in App.jsx) so it can receive
-        user + emissions as props. This makes it context-aware:
-        - Greets user by first name
-        - Knows their monthly kg, streak, points, top category
-        - AI answers reference real dashboard numbers
-      */}
       <CarbonBot user={user} emissions={emissions} />
     </div>
   );
