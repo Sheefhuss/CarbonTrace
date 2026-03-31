@@ -38,18 +38,9 @@ const pickUser = (user) =>
     return acc;
   }, {});
 
-// ── Send a real password reset email via nodemailer ─────────────────────────
-const sendResetEmail = async (email, resetToken, userName) => {
-  let nodemailer;
-  try { nodemailer = require('nodemailer'); } catch {
-    throw new Error('nodemailer not installed');
-  }
-
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('SMTP not configured in .env');
-  }
-
-  const transporter = nodemailer.createTransport({
+const createTransporter = () => {
+  const nodemailer = require('nodemailer');
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
@@ -58,7 +49,64 @@ const sendResetEmail = async (email, resetToken, userName) => {
       pass: process.env.SMTP_PASS,
     },
   });
+};
 
+const checkSmtp = () => {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP not configured. Add SMTP_HOST, SMTP_USER, SMTP_PASS to your environment variables.');
+  }
+};
+
+const sendVerificationEmail = async (email, token, userName) => {
+  checkSmtp();
+  const transporter = createTransporter();
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+  const firstName = userName?.split(' ')[0] || 'there';
+
+  await transporter.sendMail({
+    from: `"CarbonTrace" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+    to: email,
+    subject: 'Verify your CarbonTrace email 🌿',
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f2f9f5;font-family:'Helvetica Neue',Arial,sans-serif">
+  <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08)">
+    <div style="background:#0e221b;padding:28px 32px;text-align:center">
+      <span style="font-size:24px">🌿</span>
+      <span style="color:#fff;font-size:20px;font-weight:700;margin-left:8px">CarbonTrace</span>
+    </div>
+    <div style="padding:32px">
+      <p style="color:#1b3d2f;font-size:16px;margin:0 0 16px">Hi ${firstName} 👋</p>
+      <p style="color:#2e5c46;font-size:14px;line-height:1.6;margin:0 0 24px">
+        Welcome to CarbonTrace! Please verify your email address to activate your account.
+        This link expires in <strong>24 hours</strong>.
+      </p>
+      <div style="text-align:center;margin:28px 0">
+        <a href="${verifyUrl}"
+          style="display:inline-block;background:#40926d;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px">
+          Verify My Email
+        </a>
+      </div>
+      <p style="color:#64b18c;font-size:12px;text-align:center;margin:0 0 16px">
+        Or copy this link:<br/>
+        <span style="color:#40926d;word-break:break-all">${verifyUrl}</span>
+      </p>
+      <hr style="border:none;border-top:1px solid #e1f2e7;margin:24px 0"/>
+      <p style="color:#97ceb1;font-size:12px;margin:0">
+        If you didn't create a CarbonTrace account, you can safely ignore this email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
+  });
+};
+
+const sendResetEmail = async (email, resetToken, userName) => {
+  checkSmtp();
+  const transporter = createTransporter();
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
   const firstName = userName?.split(' ')[0] || 'there';
 
@@ -89,7 +137,7 @@ const sendResetEmail = async (email, resetToken, userName) => {
         </a>
       </div>
       <p style="color:#64b18c;font-size:12px;text-align:center;margin:0 0 16px">
-        Or copy this link: <br/>
+        Or copy this link:<br/>
         <span style="color:#40926d;word-break:break-all">${resetUrl}</span>
       </p>
       <hr style="border:none;border-top:1px solid #e1f2e7;margin:24px 0"/>
@@ -107,7 +155,7 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('role').optional().isIn(['individual']),  // only individual allowed from public registration
+  body('role').optional().isIn(['individual']),
   body('username').optional({ checkFalsy: true }).trim().isLength({ min: 3, max: 20 })
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Username can only have letters, numbers, underscores'),
   body('avatarIndex').optional().isInt({ min: 0, max: 14 }),
@@ -117,19 +165,16 @@ router.post('/register', [
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password, name, country = 'IND', avatarIndex = 0 } = req.body;
-    const role = 'individual'; // Force individual only from public registration
+    const role = 'individual';
 
     const exists = await User.unscoped().findOne({ where: { email } });
     if (exists) throw new AppError('Email already registered', 409);
 
-    // Completely rewritten username logic
     let username = req.body.username?.trim();
     if (username) {
-      // If the user typed a specific username, see if it is taken
       const usernameExists = await User.unscoped().findOne({ where: { username } });
       if (usernameExists) throw new AppError('That username is already taken. Please choose another.', 409);
     } else {
-      // If left blank, generate a random one and ensure it's unique
       username = generateUsername(name);
       let usernameExists = await User.unscoped().findOne({ where: { username } });
       while (usernameExists) {
@@ -147,6 +192,8 @@ router.post('/register', [
 
     const passwordHash = await bcrypt.hash(password, 12);
     const today = new Date().toISOString().split('T')[0];
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await User.unscoped().create({
       email, passwordHash, name, username, avatarIndex,
@@ -156,12 +203,72 @@ router.post('/register', [
       longestStreak: 1,
       points: 10,
       weeklyPoints: 10,
+      verificationToken,
+      verificationExpires,
+      isVerified: false,
     });
+
+    sendVerificationEmail(user.email, verificationToken, user.name).catch(err =>
+      require('./utils/logger').warn('Verification email failed:', err.message)
+    );
 
     const token = generateToken(user.id);
     await createAuditLog(user.id, 'register', 'User', user.id, { role, username }, req);
 
     res.status(201).json({ token, user: pickUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/verify-email', async (req, res, next) => {
+  try {
+    const { token } = req.query;
+    if (!token) throw new AppError('Missing verification token', 400);
+
+    const user = await User.unscoped().findOne({
+      where: {
+        verificationToken: token,
+        verificationExpires: { [Op.gt]: new Date() },
+      },
+    });
+
+    if (!user) throw new AppError('Verification link is invalid or has expired. Please register again or request a new link.', 400);
+
+    await user.update({
+      isVerified: true,
+      verificationToken: null,
+      verificationExpires: null,
+    });
+
+    await createAuditLog(user.id, 'email_verified', 'User', user.id, {}, req);
+
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?verified=true`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/resend-verification', [
+  body('email').isEmail().normalizeEmail(),
+], async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    res.json({ message: 'If that email is registered and unverified, a new verification link has been sent.' });
+
+    const user = await User.scope('withEmail').findOne({ where: { email: req.body.email } });
+    if (!user || user.isVerified) return;
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await user.update({ verificationToken, verificationExpires });
+
+    sendVerificationEmail(user.email, verificationToken, user.name).catch(err =>
+      require('./utils/logger').warn('Resend verification email failed:', err.message)
+    );
   } catch (err) {
     next(err);
   }
@@ -243,8 +350,6 @@ router.post('/logout', authenticate, async (req, res, next) => {
   }
 });
 
-// ── POST /api/auth/forgot-password ──────────────────────────────────────────
-// Checks if email exists in DB; if yes, sends real reset email
 router.post('/forgot-password', [
   body('email').isEmail().normalizeEmail(),
 ], async (req, res, next) => {
@@ -252,37 +357,26 @@ router.post('/forgot-password', [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { email } = req.body;
-
-    // Always respond 200 (security: don't reveal if email exists)
     res.json({ message: 'If that email is registered, you will receive a reset link shortly.' });
 
-    // Check DB — if not found, silently do nothing (already responded above)
-    const user = await User.scope('withEmail').findOne({ where: { email } });
+    const user = await User.scope('withEmail').findOne({ where: { email: req.body.email } });
     if (!user) return;
 
-    // Generate secure token (32 random bytes)
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
 
-    await user.update({
-      resetPasswordToken: resetToken,
-      resetPasswordExpires: resetExpires,
-    });
+    await user.update({ resetPasswordToken: resetToken, resetPasswordExpires: resetExpires });
 
-    try {
-      await sendResetEmail(email, resetToken, user.name);
-      await createAuditLog(user.id, 'password_reset_requested', 'User', user.id, { email }, req);
-    } catch (emailErr) {
-      console.error('Failed to send reset email:', emailErr.message);
-      // Don't expose email errors to client
-    }
+    sendResetEmail(user.email, resetToken, user.name).catch(err =>
+      console.error('Failed to send reset email:', err.message)
+    );
+
+    await createAuditLog(user.id, 'password_reset_requested', 'User', user.id, { email: req.body.email }, req);
   } catch (err) {
     next(err);
   }
 });
 
-// ── POST /api/auth/reset-password ───────────────────────────────────────────
 router.post('/reset-password', [
   body('token').notEmpty(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
@@ -318,8 +412,6 @@ router.post('/reset-password', [
   }
 });
 
-// ── PUT /api/auth/profile ───────────────────────────────────────────────────
-// Updates user profile settings (like avatar)
 router.put('/profile', authenticate, [
   body('avatarIndex').optional().isInt({ min: 0, max: 14 }),
 ], async (req, res, next) => {
@@ -330,7 +422,6 @@ router.put('/profile', authenticate, [
     const user = await User.unscoped().findByPk(req.user.id);
     if (!user) throw new AppError('User not found', 404);
 
-    // Update whichever fields were provided
     if (req.body.avatarIndex !== undefined) {
       user.avatarIndex = req.body.avatarIndex;
     }
