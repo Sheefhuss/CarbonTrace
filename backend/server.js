@@ -78,8 +78,10 @@ const startServer = async () => {
     await sequelize.authenticate();
     logger.info('✅ Database connected successfully.');
 
-    await sequelize.sync({ alter: true });
-    logger.info('✅ Database synced.');
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync();
+      logger.info('✅ Database synced.');
+    }
 
     app.listen(PORT, () => {
       logger.info(`🚀 CarbonTrace server running on port ${PORT}`);
