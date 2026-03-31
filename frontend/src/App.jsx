@@ -24,10 +24,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  // ✅ FIX: Call initialize() once on mount so the auth store
-  // fetches the user from the stored token (or clears it if expired).
-  // Without this, isInitializing stays true forever → spinner never ends,
-  // and visiting /dashboard without a token causes a crash.
   const initialize = useAuthStore(state => state.initialize);
 
   useEffect(() => {
