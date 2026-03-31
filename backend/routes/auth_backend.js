@@ -209,8 +209,8 @@ router.post('/register', [
     });
 
     sendVerificationEmail(user.email, verificationToken, user.name).catch(err =>
-      require('./utils/logger').warn('Verification email failed:', err.message)
-    );
+    require('../utils/logger').warn('Verification email failed:', err.message)
+);
 
     const token = generateToken(user.id);
     await createAuditLog(user.id, 'register', 'User', user.id, { role, username }, req);
