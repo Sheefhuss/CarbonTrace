@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Leaf, Plus, Trophy, Target, Zap, TrendingDown, TrendingUp,
   Users, MessageCircle, Send, X, ChevronRight, Star, Award,
-  BarChart2, Flame, RefreshC
+  BarChart2, Flame, RefreshCw
 } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
@@ -46,7 +46,7 @@ function LeaderboardBar({ data, currentUserId }) {
     <div className="space-y-2.5">
       {top.map((user, i) => {
         const pct = Math.round((user.score / maxScore) * 100);
-        const isMe = user.id === currentUserId || user.isYou;
+        const isMe = user.id === currentUserId;
         return (
           <div key={user.id} className={clsx('relative rounded-xl overflow-hidden', isMe ? 'ring-2 ring-forest-400' : '')}>
             <div className="absolute inset-0 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }} />
@@ -66,8 +66,7 @@ function LeaderboardBar({ data, currentUserId }) {
               <AvatarDisplay index={user.avatarIndex ?? 0} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className={clsx('text-sm font-semibold truncate', isMe ? 'text-forest-300' : 'text-white')}>
-                  {isMe ? 'You' : `@${user.username || user.name}`}
-                  {isMe && <span className="ml-1.5 text-xs bg-forest-500/20 text-forest-400 px-1.5 py-0.5 rounded-full">you</span>}
+                  {user.name}
                 </p>
                 <p className="text-xs text-forest-500">
                   🔥{user.streakDays}d · {user.activityCount} logs
@@ -85,30 +84,6 @@ function LeaderboardBar({ data, currentUserId }) {
   );
 }
 
-function getDateLabel(dateStr) {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const d = new Date(dateStr);
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
-function groupMessagesByDate(messages) {
-  const groups = [];
-  let lastLabel = null;
-  messages.forEach(msg => {
-    const label = getDateLabel(msg.createdAt);
-    if (label !== lastLabel) {
-      groups.push({ type: 'separator', label });
-      lastLabel = label;
-    }
-    groups.push({ type: 'message', msg });
-  });
-  return groups;
-}
-
 function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -119,28 +94,20 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const isOnline = onlineUsers[friend.id] || false;
 
   useEffect(() => {
-    axios.get(`/api/users/messages/${friend.id}`)
-      .then(r => setMessages(r.data))
-      .catch(() => {});
+    axios.get(`/api/users/messages/${friend.id}`).then(r => setMessages(r.data));
   }, [friend.id]);
 
   useEffect(() => {
     const handleNewMessage = (msg) => {
       if (msg.senderId === friend.id) {
-        setMessages(prev => {
-          if (prev.find(m => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        setMessages(prev => (prev.find(m => m.id === msg.id) ? prev : [...prev, msg]));
       }
     };
-
     const handleDeletedMessage = (messageId) => {
       setMessages(prev => prev.filter(m => m.id !== messageId));
     };
-
     socket.on('receive_message', handleNewMessage);
     socket.on('message_deleted', handleDeletedMessage);
-    
     return () => {
       socket.off('receive_message', handleNewMessage);
       socket.off('message_deleted', handleDeletedMessage);
@@ -152,16 +119,15 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   }, [messages]);
 
   const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
+    if (!input.trim() || sending) return;
     setSending(true);
     try {
-      const res = await axios.post(`/api/users/messages/${friend.id}`, { text });
+      const res = await axios.post(`/api/users/messages/${friend.id}`, { text: input.trim() });
       setMessages(prev => [...prev, res.data]);
       socket.emit('send_message', res.data);
       setInput('');
     } catch (err) {
-      console.error('Send failed:', err);
+      console.error(err);
     } finally {
       setSending(false);
     }
@@ -172,16 +138,10 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
       await axios.delete(`/api/users/messages/${msgId}`);
       socket.emit('delete_message', msgId);
     } catch (err) {
-      console.error('Delete failed:', err);
+      console.error(err);
     }
     setDeleteMenu(null);
   };
-
-  const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  };
-
-  const grouped = groupMessagesByDate(messages);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDeleteMenu(null)}>
@@ -193,47 +153,23 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-white">{friend.name}</p>
-            <p className="text-xs text-forest-400 flex items-center gap-1">
-              <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', isOnline ? 'bg-green-400' : 'bg-forest-600')} />
-              {isOnline ? 'Online' : 'Offline'} · @{friend.username} · 🔥{friend.streakDays}d
-            </p>
+            <p className="text-xs text-forest-400">{isOnline ? 'Online' : 'Offline'} · @{friend.username}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 hover:text-white flex items-center justify-center">
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 flex items-center justify-center"><X size={16} /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          {messages.length === 0 && (
-            <div className="text-center text-forest-500 text-sm mt-8">
-              <span className="text-2xl block mb-2">🌿</span>
-              Start a conversation with {friend.name.split(' ')[0]}!<br />
-              <span className="text-xs">Messages are synced in real time.</span>
-            </div>
-          )}
-          {grouped.map((item, idx) => {
-            if (item.type === 'separator') {
-              return (
-                <div key={`sep-${idx}`} className="flex items-center gap-2 py-2">
-                  <div className="flex-1 h-px bg-white/8" />
-                  <span className="text-xs text-forest-500 px-2 shrink-0">{item.label}</span>
-                  <div className="flex-1 h-px bg-white/8" />
-                </div>
-              );
-            }
-            const { msg } = item;
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {messages.map((msg) => {
             const isMe = msg.senderId === currentUser.id;
-            const time = new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             return (
-              <div key={msg.id} className={clsx('flex gap-2 group', isMe ? 'justify-end' : 'justify-start')}>
+              <div key={msg.id} className={clsx('flex gap-2', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
                 <div className="relative max-w-[75%]">
-                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer select-none', isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 border border-white/5 rounded-tl-sm')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
+                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer', isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 rounded-tl-sm')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
                     <p>{msg.text}</p>
-                    <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
                   </div>
                   {deleteMenu === msg.id && isMe && (
-                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
-                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all">🗑️ Delete for everyone</button>
+                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl min-w-[160px]">
+                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-all">🗑️ Delete for everyone</button>
                     </div>
                   )}
                 </div>
@@ -244,10 +180,8 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
         </div>
         <div className="p-3 border-t border-white/10 shrink-0">
           <div className="flex gap-2 items-end">
-            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder={`Message ${friend.name.split(' ')[0]}…`} className="flex-1 resize-none bg-white/8 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-forest-500 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent max-h-24" />
-            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-9 h-9 rounded-xl bg-forest-500 hover:bg-forest-400 disabled:opacity-40 flex items-center justify-center transition-all active:scale-95 shrink-0">
-              <Send size={14} className="text-white" />
-            </button>
+            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} placeholder={`Message ${friend.name.split(' ')[0]}...`} className="flex-1 bg-white/8 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} />
+            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-9 h-9 rounded-xl bg-forest-500 flex items-center justify-center disabled:opacity-40"><Send size={14} className="text-white"/></button>
           </div>
         </div>
       </div>
@@ -260,16 +194,14 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   const [leaderboard, setLeaderboard] = useState([]);
   const [friends, setFriends] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState({});
   const [friendCode, setFriendCode] = useState('');
-  const [addingFriend, setAddingFriend] = useState(false);
   const [friendMsg, setFriendMsg] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [coinToast, setCoinToast] = useState({ visible: false, points: 0 });
   const [location, setLocation] = useState(null);
   const [chatFriend, setChatFriend] = useState(null);
-  const [prevPoints, setPrevPoints] = useState(user?.points || 0);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState({});
   
   const { tips, loading: tipsLoading, generateTips } = useAITips(emissions, user, location);
   const dailyFact = getDailyFact();
@@ -277,6 +209,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
   useEffect(() => {
     detectUserLocation().then(loc => { if (loc) setLocation(loc); });
+    axios.get('/api/dashboard/leaderboard').then(r => setLeaderboard(r.data.leaderboard || []));
   }, []);
 
   useEffect(() => {
@@ -284,136 +217,44 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   }, [emissions.length, tips, generateTips]);
 
   useEffect(() => {
-    axios.get('/api/dashboard/leaderboard').then(r => setLeaderboard(r.data.leaderboard || [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    axios.get('/api/users/friends').then(r => setFriends(r.data || [])).catch(() => {});
-  }, [user?.id]);
-
-  useEffect(() => {
     if (!user?.id) return;
-
-    const handleStatusUpdate = ({ userId, status }) => {
-      setOnlineUsers(prev => ({ ...prev, [userId]: status === 'online' }));
-    };
-
-    const handleSync = (onlineIds) => {
-      const initialStatus = {};
-      onlineIds.forEach(id => { initialStatus[id] = true; });
-      setOnlineUsers(prev => ({ ...prev, ...initialStatus }));
-    };
-
-    const announceOnline = () => {
-      socket.emit('user_online', user.id);
-    };
-
-    socket.on('status_update', handleStatusUpdate);
-    socket.on('sync_online_users', handleSync);
-    socket.on('connect', announceOnline);
-
-    if (socket.connected) announceOnline();
-
+    const announce = () => socket.emit('user_online', user.id);
+    socket.on('connect', announce);
+    socket.on('status_update', ({ userId, status }) => setOnlineUsers(p => ({ ...p, [userId]: status === 'online' })));
+    socket.on('sync_online_users', (ids) => {
+      const statuses = {};
+      ids.forEach(id => statuses[id] = true);
+      setOnlineUsers(statuses);
+    });
+    if (socket.connected) announce();
     return () => {
-      socket.off('status_update', handleStatusUpdate);
-      socket.off('sync_online_users', handleSync);
-      socket.off('connect', announceOnline);
+      socket.off('connect', announce);
+      socket.off('status_update');
+      socket.off('sync_online_users');
     };
   }, [user?.id]);
 
   useEffect(() => {
-    if (!friends.length) return;
-    
-    const fetchAllUnread = () => {
-      axios.get('/api/users/messages/unread-counts')
-        .then(r => setUnreadCounts(r.data || {}))
-        .catch(() => {});
-    };
-    
-    fetchAllUnread();
-
-    const handleNewMessage = (msg) => {
-      if (msg.receiverId === user.id && (!chatFriend || chatFriend.id !== msg.senderId)) {
-        setUnreadCounts(prev => ({
-          ...prev,
-          [msg.senderId]: (prev[msg.senderId] || 0) + 1
-        }));
-      }
-    };
-
-    socket.on('receive_message', handleNewMessage);
-    return () => socket.off('receive_message', handleNewMessage);
-  }, [friends.length, user?.id, chatFriend]);
-
-  useEffect(() => {
-    if (user?.points && user.points > prevPoints && prevPoints > 0) {
-      const diff = user.points - prevPoints;
-      setCoinToast({ visible: true, points: diff });
-    }
-    if (user?.points) setPrevPoints(user.points);
-  }, [user?.points, prevPoints]);
-
-  useEffect(() => {
-    if (!emissions.length || !user) return;
-    const allBadges = computeBadges(user, emissions);
-    const newBadges = allBadges.filter(b => b.earned && !user?.earnedBadges?.includes(b.id));
-
-    newBadges.forEach(async (b) => {
-      try {
-        const res = await axios.post('/api/users/award-badge', { badgeId: b.id });
-        if (res.data.earned) {
-            updateUser({ points: res.data.totalPoints, earnedBadges: res.data.badges });
-        }
-      } catch (err) {}
-    });
-  }, [emissions.length, user]);
-
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const monthlyEmissions = emissions.filter(e => e.date >= startOfMonth);
-  const monthlyKg = monthlyEmissions.reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
-  const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
-  const weekKey = getCurrentWeekKey();
-  const challenges = CHALLENGES.map(c => {
-    const progress = c.check(emissions, user);
-    const pct = Math.min(Math.round((progress / c.target) * 100), 100);
-    const weekChallengeKey = `${c.id}_${weekKey}`;
-    const completed = user?.completedChallenges?.includes(weekChallengeKey) || pct >= 100;
-    return { ...c, progress, pct, completed, weekChallengeKey };
-  });
-
-  const handleCompleteChallenge = async (challenge) => {
-    if (challenge.completed || challenge.pct < 100) return;
-    try {
-      const res = await axios.post('/api/users/complete-challenge', { challengeId: challenge.id });
-      if (res.data.completed) {
-        updateUser({ points: res.data.totalPoints });
-        setCoinToast({ visible: true, points: res.data.pointsAwarded });
-        const me = await axios.get('/api/auth/me');
-        updateUser(me.data.user);
-      }
-    } catch {}
-  };
+    axios.get('/api/users/friends').then(r => setFriends(r.data || []));
+    axios.get('/api/users/messages/unread-counts').then(r => setUnreadCounts(r.data || {}));
+  }, [user?.id]);
 
   const handleAddFriend = async (e) => {
     e.preventDefault();
-    setAddingFriend(true);
-    setFriendMsg('');
     try {
       const res = await axios.post('/api/users/connect-friend', { friendCode });
       setFriendMsg(`✅ ${res.data.message}`);
       setFriendCode('');
-      const updated = await axios.get('/api/users/friends');
-      setFriends(updated.data || []);
+      axios.get('/api/users/friends').then(r => setFriends(r.data));
     } catch (err) {
-      setFriendMsg(`❌ ${err.response?.data?.error || 'Could not add friend'}`);
-    } finally {
-      setAddingFriend(false);
+      setFriendMsg(`❌ ${err.response?.data?.error || 'Failed'}`);
     }
   };
 
-  const locationLabel = location?.city ? `${location.city}${location.state ? ', ' + location.state : ''}` : COUNTRY_AVERAGES[user?.country]?.name || 'Your area';
-  const tabs = ['overview', 'challenges', 'leaderboard', 'friends', 'badges'];
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthlyKg = emissions.filter(e => e.date >= startOfMonth).reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
+  const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
 
   return (
     <>
@@ -424,54 +265,40 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
       <div className="space-y-6 pb-24">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden hover:ring-2 hover:ring-forest-400 transition-all cursor-pointer" title="Change Avatar">
+            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden cursor-pointer">
               <AvatarDisplay index={user?.avatarIndex ?? 0} size="lg" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-white text-xs font-bold">Edit</span>
-              </div>
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-white text-xs">Edit</div>
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Hi, {user?.name?.split(' ')[0]} 👋</h1>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {user?.streakDays > 0 && <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">🔥 {user.streakDays}d streak</span>}
-                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full shadow-sm shadow-amber-500/20">⭐ {user?.points || 0} pts</span>
-                {user?.weeklyPoints > 0 && <span className="flex items-center gap-1 bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-bold px-2 py-0.5 rounded-full">🏅 {user.weeklyPoints} this week</span>}
-                {location?.city && <span className="text-xs text-forest-500">📍 {location.city}</span>}
+                <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">🔥 {user?.streakDays || 0}d streak</span>
+                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full">⭐ {user?.points || 0} pts</span>
               </div>
             </div>
           </div>
-          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5">
-            <Plus size={16} /> Log
-          </button>
+          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5"><Plus size={16} /> Log</button>
         </div>
 
-        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80">
+        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-forest-400 uppercase tracking-widest">This month · {locationLabel}</p>
+              <p className="text-xs text-forest-400 uppercase tracking-widest">This month</p>
               <p className="text-3xl font-bold text-white mt-1">{formatCO2(monthlyKg)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-forest-500">vs local avg</p>
-              {monthlyKg > 0 ? (
-                <p className={clsx('text-lg font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
-                  {monthlyKg < countryAvg ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below` : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above`}
-                </p>
-              ) : (
-                <p className="text-sm text-forest-500">Log to compare</p>
-              )}
-              <p className="text-xs text-forest-600">avg: {formatCO2(countryAvg)}/mo</p>
+              <p className={clsx('text-lg font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
+                {monthlyKg < countryAvg ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below avg` : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above avg`}
+              </p>
             </div>
           </div>
-          <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-            <div className={clsx('h-full rounded-full transition-all duration-700', monthlyKg < countryAvg ? 'bg-forest-400' : 'bg-amber-400')} style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} />
-          </div>
-          <p className="text-xs text-forest-500 mt-2">🌱 Tip: {dailyFact.emoji} {dailyFact.fact}</p>
+          <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden"><div className="h-full bg-forest-400 transition-all duration-700" style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} /></div>
+          <p className="text-xs text-forest-500 mt-2">🌱 Fact: {dailyFact.fact}</p>
         </div>
 
-        <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto scrollbar-hide">
-          {tabs.map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-2 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap', activeTab === t ? 'bg-forest-500 text-white shadow' : 'text-forest-400 hover:text-white')}>
+        <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto">
+          {['overview', 'challenges', 'leaderboard', 'friends', 'badges'].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-4 rounded-lg text-xs font-semibold capitalize transition-all', activeTab === t ? 'bg-forest-500 text-white shadow' : 'text-forest-400 hover:text-white')}>
               {t}
             </button>
           ))}
@@ -479,206 +306,70 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {monthlyEmissions.length > 0 && (() => {
-              const bycat = {};
-              monthlyEmissions.forEach(e => { bycat[e.category] = (bycat[e.category] || 0) + parseFloat(e.co2eKg || 0); });
-              const sorted = Object.entries(bycat).sort(([,a],[,b]) => b - a);
-              const total = sorted.reduce((s,[,v]) => s+v, 0);
-              const catColors = { transport:'#40926d', food:'#64b18c', shopping:'#97ceb1', housing:'#f59e0b', industrial:'#ef4444', other:'#6b7280' };
-              return (
-                <div className="card">
-                  <h3 className="text-sm font-bold text-white mb-3">Emissions by Category</h3>
-                  <div className="space-y-2">
-                    {sorted.map(([cat, kg]) => (
-                      <div key={cat}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="capitalize text-forest-200 font-medium">{cat}</span>
-                          <span className="text-forest-400">{formatCO2(kg)}</span>
-                        </div>
-                        <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round((kg/total)*100)}%`, backgroundColor: catColors[cat] || '#6b7280' }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="card">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
-                {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin" />}
-              </div>
-              {(tips || FALLBACK_TIPS_STATIC).map((tip, i) => (
+            <div className="card p-4">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
+              {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin" />}
+              {(tips || []).map((tip, i) => (
                 <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/5 mb-2 last:mb-0">
                   <span className="text-xl shrink-0">{tip.icon}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{tip.title}</p>
-                    <p className="text-xs text-forest-300 mt-0.5">{tip.desc}</p>
-                    <p className="text-xs text-forest-500 mt-1 font-medium">{tip.saving}</p>
-                  </div>
+                  <div><p className="text-sm font-semibold text-white">{tip.title}</p><p className="text-xs text-forest-300">{tip.desc}</p></div>
                 </div>
               ))}
             </div>
-
-            {emissions.slice(0, 5).length > 0 && (
-              <div className="card">
-                <h3 className="text-sm font-bold text-white mb-3">Recent Activity</h3>
-                <div className="space-y-2">
-                  {emissions.slice(0, 5).map(e => (
-                    <div key={e.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                      <div>
-                        <p className="text-sm text-white capitalize">{e.subCategory || e.category}</p>
-                        <p className="text-xs text-forest-500">{fmtDate(e.date)} · {e.quantity} {e.unit}</p>
-                      </div>
-                      <span className={clsx('text-sm font-bold', parseFloat(e.co2eKg) <= 2 ? 'text-forest-400' : 'text-white')}>{formatCO2(parseFloat(e.co2eKg))}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'challenges' && (
-          <div className="space-y-3">
-            <p className="text-xs text-forest-500 text-center">Weekly challenges reset every Monday</p>
-            {challenges.filter(c => !c.completed).map(c => (
-              <div key={c.id} className={clsx('card border-2 transition-all', c.completed ? 'border-forest-400/40 bg-forest-500/10' : 'border-white/5')}>
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl shrink-0">{c.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-white">{c.name}</p>
-                      {c.completed && <span className="text-xs bg-forest-500/20 text-forest-400 px-2 py-0.5 rounded-full">✓ Done</span>}
-                    </div>
-                    <p className="text-xs text-forest-400 mt-0.5">{c.desc}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-forest-500">{c.progress} / {c.target} {c.unit}</span>
-                        <span className="text-amber-400 font-bold">+{c.points} pts</span>
-                      </div>
-                      <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden">
-                        <div className={clsx('h-full rounded-full transition-all duration-500', c.completed ? 'bg-forest-400' : 'bg-forest-600')} style={{ width: `${c.pct}%` }} />
-                      </div>
-                    </div>
+            <div className="card p-4">
+              <h3 className="text-sm font-bold text-white mb-3">Recent Activity</h3>
+              <div className="space-y-2">
+                {emissions.slice(0, 5).map(e => (
+                  <div key={e.id} className="flex justify-between py-1.5 border-b border-white/5 last:border-0">
+                    <div><p className="text-sm text-white capitalize">{e.category}</p><p className="text-xs text-forest-500">{fmtDate(e.date)}</p></div>
+                    <span className="text-sm font-bold text-white">{formatCO2(e.co2eKg)}</span>
                   </div>
-                </div>
-                {c.pct >= 100 && !c.completed && (
-                  <button onClick={() => handleCompleteChallenge(c)} className="mt-3 w-full btn-primary py-2 text-sm flex items-center justify-center gap-2">
-                    🪙 Claim {c.points} pts
-                  </button>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <div className="space-y-4">
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2"><Trophy size={16} className="text-amber-400" /> Global Leaderboard</h3>
-                <p className="text-xs text-forest-500">Score = activity + streak + badges</p>
-              </div>
-              {leaderboard.length > 0 ? <LeaderboardBar data={leaderboard} currentUserId={user?.id} /> : <p className="text-center text-forest-500 text-sm py-4">Loading…</p>}
             </div>
-            {leaderboard.find(u => u.isYou) && (
-              <div className="card bg-forest-500/10 border border-forest-400/20 text-center">
-                <p className="text-forest-300 text-sm">
-                  Your rank: <span className="text-white font-bold">#{leaderboard.find(u => u.isYou)?.rank}</span> out of {leaderboard.length} players
-                </p>
-              </div>
-            )}
           </div>
         )}
 
         {activeTab === 'friends' && (
           <div className="space-y-4">
-            <div className="card text-center">
-              <p className="text-xs text-forest-400 uppercase tracking-widest mb-2">Your Friend Code</p>
-              <p className="text-3xl font-black text-white tracking-[0.2em] font-mono">{user?.friendCode || '—'}</p>
-              <p className="text-xs text-forest-500 mt-2">Share this code so friends can add you</p>
-            </div>
-
-            <div className="card">
-              <h3 className="text-sm font-bold text-white mb-3">Add a Friend</h3>
+            <div className="card text-center p-4"><p className="text-xs text-forest-400 uppercase mb-2">Your Friend Code</p><p className="text-3xl font-black text-white tracking-[0.2em]">{user?.friendCode || '—'}</p></div>
+            <div className="card p-4">
+              <h3 className="text-sm font-bold text-white mb-3">Add Friend</h3>
               <form onSubmit={handleAddFriend} className="flex gap-2">
-                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))} placeholder="Enter 8-char code" maxLength={8} className="input flex-1 font-mono tracking-widest text-sm" />
-                <button type="submit" disabled={addingFriend || friendCode.length !== 8} className="btn-primary text-sm px-4 disabled:opacity-40">{addingFriend ? '…' : 'Add'}</button>
+                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase())} placeholder="8-char code" maxLength={8} className="input flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none" />
+                <button type="submit" className="btn-primary text-sm px-4">Add</button>
               </form>
-              {friendMsg && <p className={clsx('text-xs mt-2', friendMsg.startsWith('✅') ? 'text-forest-400' : 'text-red-400')}>{friendMsg}</p>}
+              {friendMsg && <p className="text-xs mt-2 text-forest-400">{friendMsg}</p>}
             </div>
-
-            {friends.length > 0 ? (
-              <div className="card">
-                <h3 className="text-sm font-bold text-white mb-3">Friends ({friends.length})</h3>
-                <div className="space-y-3">
-                  {friends.map(f => {
-                    const isActive = onlineUsers[f.id] || f.lastActiveDate === new Date().toISOString().split('T')[0];
-                    const unread = unreadCounts[f.id] || 0;
-                    return (
-                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all">
-                      <div className="relative">
-                        <AvatarDisplay index={f.avatarIndex ?? 0} size="md" />
-                        <span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', isActive ? 'bg-green-400' : 'bg-forest-600')} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-white">{f.name}</p>
-                          {isActive && <span className="text-xs text-green-400 font-medium">● Online</span>}
-                        </div>
-                        <p className="text-xs text-forest-400">🔥{f.streakDays}d · ⭐{f.points}pts {f.monthKg > 0 && ` · ${formatCO2(f.monthKg)} this month`}</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {(f.earnedBadges || []).slice(0, 4).map((bid, i) => <span key={i} className="text-sm">{getBadgeIcon(bid)}</span>)}
-                        </div>
-                      </div>
-                      <button onClick={() => { setChatFriend(f); setUnreadCounts(prev => ({ ...prev, [f.id]: 0 })); }} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-500/20 hover:bg-forest-500/30 text-forest-300 text-xs font-semibold transition-all">
-                        <MessageCircle size={13} /> Chat
-                        {unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center px-1">{unread > 9 ? '9+' : unread}</span>}
-                      </button>
-                    </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="card text-center py-8">
-                <Users size={32} className="text-forest-600 mx-auto mb-3" />
-                <p className="text-forest-400 text-sm">No friends yet</p>
-                <p className="text-forest-600 text-xs mt-1">Share your friend code to connect!</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'badges' && (
-          <div className="card">
-            <h3 className="text-sm font-bold text-white mb-4">Achievements</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {badges.map(b => (
-                <div key={b.id} className={clsx('flex flex-col items-center gap-2 p-3 rounded-xl border-2 text-center transition-all', b.earned ? 'border-forest-400/40 bg-forest-500/15' : 'border-white/5 bg-white/3 opacity-40 grayscale')}>
-                  <span className="text-2xl">{b.icon}</span>
-                  <p className={clsx('text-xs font-bold leading-tight', b.earned ? 'text-white' : 'text-forest-500')}>{b.name}</p>
-                  <p className="text-xs text-forest-500 leading-tight">{b.desc}</p>
+            <div className="space-y-3">
+              {friends.map(f => (
+                <div key={f.id} className="card p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative"><AvatarDisplay index={f.avatarIndex} size="md" /><span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', onlineUsers[f.id] ? 'bg-green-400' : 'bg-forest-600')} /></div>
+                    <div><p className="text-sm font-semibold text-white">{f.name}</p><p className="text-xs text-forest-400">🔥{f.streakDays}d · ⭐{f.points}pts</p></div>
+                  </div>
+                  <button onClick={() => setChatFriend(f)} className="relative bg-forest-500/20 p-2 rounded-xl text-forest-300">
+                    <MessageCircle size={18} />
+                    {unreadCounts[f.id] > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1 rounded-full">{unreadCounts[f.id]}</span>}
+                  </button>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'leaderboard' && <div className="card p-4"><h3 className="text-sm font-bold text-white mb-4">🏆 Global Ranking</h3><LeaderboardBar data={leaderboard} currentUserId={user?.id} /></div>}
+        
+        {activeTab === 'badges' && (
+          <div className="grid grid-cols-3 gap-3">
+            {badges.map(b => (
+              <div key={b.id} className={clsx('card text-center p-3 flex flex-col items-center justify-center grayscale opacity-40', b.earned && 'grayscale-0 opacity-100 border-forest-400/40 bg-forest-500/10')}>
+                <span className="text-2xl">{b.icon}</span><p className="text-[10px] font-bold text-white mt-1 leading-tight">{b.name}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>
     </>
   );
 }
-
-const FALLBACK_TIPS_STATIC = [
-  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
-  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
-  { icon: '💡', title: 'Switch to LED lighting', desc: 'LEDs use 75% less energy than old bulbs.', saving: 'Save ~80 kg/year' },
-];
-
-const BADGE_MAP = {
-  first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊', fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝', veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
-};
-const getBadgeIcon = (id) => BADGE_MAP[id] || '🏅';
