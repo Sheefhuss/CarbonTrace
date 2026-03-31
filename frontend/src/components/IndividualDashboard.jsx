@@ -116,7 +116,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const [deleteMenu, setDeleteMenu] = useState(null);
   const bottomRef = useRef(null);
 
-  const isOnline = onlineUsers[friend.id] || (friend.lastActiveDate === new Date().toISOString().split('T')[0]);
+  const isOnline = onlineUsers[friend.id] || false;
 
   useEffect(() => {
     axios.get(`/api/users/messages/${friend.id}`)
@@ -126,7 +126,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
 
   useEffect(() => {
     const handleNewMessage = (msg) => {
-      if (msg.senderId === friend.id || msg.receiverId === friend.id) {
+      if (msg.senderId === friend.id || (msg.receiverId === friend.id && msg.senderId === currentUser.id)) {
         setMessages(prev => {
           if (prev.find(m => m.id === msg.id)) return prev;
           return [...prev, msg];
@@ -134,9 +134,18 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
       }
     };
 
+    const handleDeletedMessage = (messageId) => {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    };
+
     socket.on('receive_message', handleNewMessage);
-    return () => socket.off('receive_message', handleNewMessage);
-  }, [friend.id]);
+    socket.on('message_deleted', handleDeletedMessage);
+    
+    return () => {
+      socket.off('receive_message', handleNewMessage);
+      socket.off('message_deleted', handleDeletedMessage);
+    };
+  }, [friend.id, currentUser.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -158,17 +167,12 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
     }
   };
 
-  const handleDeleteForMe = (msgId) => {
-    setMessages(prev => prev.filter(m => m.id !== msgId));
-    setDeleteMenu(null);
-  };
-
   const handleDeleteForEveryone = async (msgId) => {
     try {
       await axios.delete(`/api/users/messages/${msgId}`);
-      setMessages(prev => prev.filter(m => m.id !== msgId));
-    } catch {
-      setMessages(prev => prev.filter(m => m.id !== msgId));
+      socket.emit('delete_message', msgId);
+    } catch (err) {
+      console.error('Delete failed:', err);
     }
     setDeleteMenu(null);
   };
@@ -227,10 +231,9 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
                     <p>{msg.text}</p>
                     <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
                   </div>
-                  {deleteMenu === msg.id && (
-                    <div className={clsx('absolute z-10 mt-1 bg-forest-800 border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[160px]', isMe ? 'right-0' : 'left-0')}>
-                      <button onClick={() => handleDeleteForMe(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-forest-200 hover:bg-white/10 transition-all">🙈 Delete for me</button>
-                      {isMe && <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all border-t border-white/5">🗑️ Delete for everyone</button>}
+                  {deleteMenu === msg.id && isMe && (
+                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all">🗑️ Delete for everyone</button>
                     </div>
                   )}
                 </div>
@@ -241,12 +244,11 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
         </div>
         <div className="p-3 border-t border-white/10 shrink-0">
           <div className="flex gap-2 items-end">
-            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder={`Message ${friend.name.split(' ')[0]}…`} className="flex-1 resize-none bg-white/8 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-forest-500 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent max-h-24" style={{ color: 'white', WebkitTextFillColor: 'white' }} />
+            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder={`Message ${friend.name.split(' ')[0]}…`} className="flex-1 resize-none bg-white/8 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-forest-500 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent max-h-24" />
             <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-9 h-9 rounded-xl bg-forest-500 hover:bg-forest-400 disabled:opacity-40 flex items-center justify-center transition-all active:scale-95 shrink-0">
               <Send size={14} className="text-white" />
             </button>
           </div>
-          <p className="text-xs text-forest-600 text-center mt-1">Messages are synced in real time</p>
         </div>
       </div>
     </div>
@@ -292,8 +294,6 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   useEffect(() => {
     if (!user?.id) return;
 
-    socket.emit('user_online', user.id);
-
     const handleStatusUpdate = ({ userId, status }) => {
       setOnlineUsers(prev => ({ ...prev, [userId]: status === 'online' }));
     };
@@ -304,12 +304,20 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
       setOnlineUsers(prev => ({ ...prev, ...initialStatus }));
     };
 
+    const announceOnline = () => {
+      socket.emit('user_online', user.id);
+    };
+
     socket.on('status_update', handleStatusUpdate);
     socket.on('sync_online_users', handleSync);
+    socket.on('connect', announceOnline);
+
+    if (socket.connected) announceOnline();
 
     return () => {
       socket.off('status_update', handleStatusUpdate);
       socket.off('sync_online_users', handleSync);
+      socket.off('connect', announceOnline);
     };
   }, [user?.id]);
 
