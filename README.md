@@ -1,4 +1,4 @@
-# 🌿 CarbonTrace
+# CarbonTrace
 
 > A personalised carbon footprint tracker built for Indian users — log daily activities, earn points, complete challenges, and get AI-powered tips to reduce your environmental impact.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -32,38 +32,38 @@ The platform includes a gamification layer with points, badges, weekly challenge
 
 ## Features
 
-### 🏃 Activity Logging
+###  Activity Logging
 - Log transport, food, and shopping activities with real-time CO₂ preview
 - Colour-coded impact levels — zero → low → medium → high
 - Real-world equivalents shown (km driven, trees needed, kWh used)
 - Low-carbon bonus points for activities under 2 kg CO₂e
 - Dashboard updates instantly after saving — no page refresh needed
 
-### 📊 Personal Dashboard
+###  Personal Dashboard
 - Monthly CO₂ total compared against India and world averages
 - Paris 2030 target benchmark on every dashboard
 - Emissions breakdown by category with donut chart
 - Monthly trend chart over last 6 months
 - Location detection for localised comparisons via OpenStreetMap
 
-### 🎮 Gamification
+###  Gamification
 - Points system with daily login rewards and activity bonuses
 - 12 achievement badges with milestone tracking
 - 6 weekly challenges that reset every Monday
 - Community leaderboard scored on activity count, streak, emission reduction, and badges
 - Friends system with unique 8-character friend codes — both users must connect mutually
 
-### 🤖 AI Features
+###  AI Features
 - **AI Tips** — Google Gemini 2.0 Flash generates 3 personalised tips daily based on actual emission data, cached in localStorage to avoid quota exhaustion
 - **CarbonBot** — Floating interactive chatbot powered by Groq (LLaMA 3.3 70B), knows all CarbonTrace emission factors, point values, and challenge details
 
-### 👤 User System
+###  User System
 - Two-step registration with 15 cartoon avatar options
 - Login with email or @username — email never exposed publicly
 - Streak tracking with longest streak record
 - Weekly points reset every Monday for competitive leaderboard
 
-### 📅 Footprint Quiz
+###  Footprint Quiz
 - 3-step onboarding quiz covering home, transport, and diet
 - Estimates annual baseline footprint used as context for AI tips
 
