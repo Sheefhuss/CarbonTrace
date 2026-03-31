@@ -67,6 +67,20 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/scopes', scopeRoutes);
 
+app.post('/api/cron/weekly-email', async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers['x-cron-secret'] !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { sendWeeklyEmails } = require('./utils/weeklyEmail');
+    await sendWeeklyEmails();
+    res.json({ ok: true, timestamp: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use('*', (req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });
@@ -76,30 +90,22 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await sequelize.authenticate();
-    logger.info('✅ Database connected successfully.');
+    logger.info('Database connected successfully.');
 
     await sequelize.sync({ alter: true });
-    logger.info('✅ Database synced.');
+    logger.info('Database synced.');
+
+    const requiredEnv = ['JWT_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'FRONTEND_URL'];
+    const missing = requiredEnv.filter(k => !process.env[k]);
+    if (missing.length) {
+      logger.warn(`Missing env vars: ${missing.join(', ')} — email features may not work`);
+    }
 
     app.listen(PORT, () => {
-      logger.info(`🚀 CarbonTrace server running on port ${PORT}`);
+      logger.info(`CarbonTrace server running on port ${PORT}`);
     });
-
-    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_CRON === 'true') {
-      try {
-        const cron = require('node-cron');
-        const { sendWeeklyEmails } = require('./utils/weeklyEmail');
-        cron.schedule('0 8 * * 1', async () => {
-          logger.info('📧 Running weekly email job...');
-          await sendWeeklyEmails();
-        }, { timezone: 'Asia/Kolkata' });
-        logger.info('✅ Weekly email cron scheduled (Mondays 8am IST).');
-      } catch (err) {
-        logger.warn('⚠️  node-cron not installed — weekly emails disabled.');
-      }
-    }
   } catch (err) {
-    logger.error('❌ Unable to connect to database:', err);
+    logger.error('Unable to connect to database:', err);
     process.exit(1);
   }
 };
