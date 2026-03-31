@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { Op, fn, col } = require('sequelize');
@@ -10,7 +9,6 @@ const { AppError } = require('../middleware/errorHandler');
 const router = express.Router();
 router.use(authenticate);
 
-// FIX: added friend_made: 20
 const BADGE_POINTS = {
   first_log: 20, week_streak: 50, month_streak: 150,
   ten_logs: 30, fifty_logs: 100, below_avg: 40,
@@ -104,7 +102,6 @@ router.post('/connect-friend', [
 
     await createAuditLog(me.id, 'friend_connected', 'User', friend.id, { friendCode }, req);
 
-    // FIX: Auto-award friend_made badge if not already earned
     const earnedBadges = me.earnedBadges || [];
     if (!earnedBadges.includes('friend_made')) {
       const pts = BADGE_POINTS['friend_made'];
@@ -256,6 +253,32 @@ router.get('/audit-log', async (req, res, next) => {
       limit: 100,
     });
     res.json(logs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 🚨 NEW ROUTE: Bulk Unread Counts (MUST be before /messages/:friendId)
+router.get('/messages/unread-counts', async (req, res, next) => {
+  try {
+    const unreadMessages = await Message.findAll({
+      where: {
+        receiverId: req.user.id,
+        readAt: null
+      },
+      attributes: [
+        'senderId',
+        [fn('COUNT', col('id')), 'count']
+      ],
+      group: ['senderId']
+    });
+
+    const counts = {};
+    unreadMessages.forEach(record => {
+      counts[record.senderId] = parseInt(record.get('count'), 10);
+    });
+
+    res.json(counts);
   } catch (err) {
     next(err);
   }
