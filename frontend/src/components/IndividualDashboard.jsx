@@ -1,16 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Leaf, Plus, Trophy, Target, Zap, TrendingDown, TrendingUp,
-  Users, MessageCircle, Send, X, ChevronRight, Star, Award,
-  BarChart2, Flame, RefreshCw, CheckCircle
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Trophy, Users, MessageCircle, Send, X, Leaf, CheckCircle, Lightbulb } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
 import { useAITips } from '../hooks/useData';
-import {
-  formatCO2, fmtDate, COUNTRY_AVERAGES, getDailyFact,
-  computeBadges, CHALLENGES, getCurrentWeekKey, detectUserLocation
-} from '../utils/helpers';
+import { formatCO2, fmtDate, COUNTRY_AVERAGES, getDailyFact, computeBadges, CHALLENGES, getCurrentWeekKey, detectUserLocation } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
 import socket from '../socket';
@@ -38,11 +31,7 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   }, [friend.id]);
 
   useEffect(() => {
-    const handleNew = (msg) => { 
-      if (msg.senderId === friend.id) {
-        setMessages(p => (p.find(m => m.id === msg.id) ? p : [...p, msg]));
-      }
-    };
+    const handleNew = (msg) => { if (msg.senderId === friend.id) setMessages(p => (p.find(m => m.id === msg.id) ? p : [...p, msg])); };
     const handleDel = (id) => setMessages(p => p.filter(m => m.id !== id));
     socket.on('receive_message', handleNew);
     socket.on('message_deleted', handleDel);
@@ -179,8 +168,18 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     return { ...c, progress, pct, completed };
   });
 
+  const groupedActivities = [];
+  let lastActLabel = null;
+  emissions.slice(0, 10).forEach(e => {
+    const l = getDateLabel(e.date);
+    if (l !== lastActLabel) { groupedActivities.push({ type: 'sep', label: l }); lastActLabel = l; }
+    groupedActivities.push({ type: 'act', data: e });
+  });
+
   const monthlyKg = emissions.filter(e => new Date(e.date).getMonth() === new Date().getMonth()).reduce((s, e) => s + parseFloat(e.co2eKg), 0);
   const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
+
+  const displayTips = tips && tips.length > 0 ? tips : FALLBACK_TIPS_STATIC;
 
   return (
     <div className="space-y-6 pb-24 max-w-4xl mx-auto">
@@ -197,7 +196,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
             <h1 className="text-2xl font-black text-white tracking-tight">Hi, {user?.name?.split(' ')[0]} 👋</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 {user?.streakDays || 0}d Streak</span>
-              <span className="bg-amber-400/20 border border-amber-400/30 text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">⭐ {user?.points || 0} Points</span>
+              <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">⭐ {user?.points || 0} Points</span>
             </div>
           </div>
         </div>
@@ -240,30 +239,34 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
       {activeTab === 'overview' && (
         <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
-            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4 flex items-center gap-2">🤖 Smart Recommendations</h3>
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Lightbulb size={14} /> Smart Recommendations</h3>
             {tipsLoading ? (
               <div className="space-y-3"><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/></div>
             ) : (
               <div className="space-y-3">
-                {tips?.map((t, i) => (
+                {displayTips.map((t, i) => (
                   <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/8 transition-all group">
                     <span className="text-3xl transition-transform group-hover:scale-110 duration-300">{t.icon}</span>
-                    <div><p className="text-sm font-bold text-white mb-1">{t.title || 'Tip'}</p><p className="text-xs text-forest-300 leading-relaxed font-medium">{t.desc}</p></div>
+                    <div><p className="text-sm font-bold text-white mb-1">{t.title}</p><p className="text-xs text-forest-300 leading-relaxed font-medium">{t.desc}</p></div>
                   </div>
                 ))}
               </div>
             )}
           </div>
           <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
-            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4">Recent Activity Logs</h3>
-            <div className="divide-y divide-white/5">
-              {emissions.slice(0, 6).map(e => (
-                <div key={e.id} className="flex justify-between items-center py-3.5 first:pt-0 last:pb-0">
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4">Activity Logs</h3>
+            <div className="space-y-1">
+              {groupedActivities.map((item, i) => item.type === 'sep' ? (
+                <div key={i} className="flex items-center py-3 first:pt-0">
+                  <div className="flex-1 h-px bg-white/5"/><span className="text-[9px] uppercase text-forest-600 px-3 font-black tracking-widest">{item.label}</span><div className="flex-1 h-px bg-white/5"/>
+                </div>
+              ) : (
+                <div key={item.data.id} className="flex justify-between items-center py-3 group hover:bg-white/2 rounded-xl px-2 -mx-2 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-forest-500/10 rounded-xl flex items-center justify-center text-forest-500 font-bold capitalize">{e.category.charAt(0)}</div>
-                    <div><p className="text-sm font-bold text-white capitalize">{e.category}</p><p className="text-[10px] text-forest-600 font-bold uppercase mt-0.5 tracking-tighter">{fmtDate(e.date)}</p></div>
+                    <div className="w-9 h-9 bg-forest-500/10 rounded-xl flex items-center justify-center text-forest-500 font-black capitalize text-xs">{item.data.category.charAt(0)}</div>
+                    <div><p className="text-sm font-bold text-white capitalize">{item.data.category}</p><p className="text-[9px] text-forest-600 font-bold uppercase mt-0.5 tracking-tighter">{item.data.subCategory || 'General Entry'}</p></div>
                   </div>
-                  <span className="text-sm font-black text-white bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">{formatCO2(e.co2eKg)}</span>
+                  <span className="text-sm font-black text-white bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">{formatCO2(item.data.co2eKg)}</span>
                 </div>
               ))}
             </div>
@@ -398,6 +401,12 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     </div>
   );
 }
+
+const FALLBACK_TIPS_STATIC = [
+  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.' },
+  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.' },
+  { icon: '💡', title: 'Switch to LED lighting', desc: 'LEDs use 75% less energy than old bulbs.' },
+];
 
 const BADGE_MAP = {
   first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊', fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝', veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
