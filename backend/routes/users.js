@@ -1,3 +1,6 @@
+// FILE: backend/routes/users.js
+// FIX: Added 'friend_made' to BADGE_POINTS (was missing, falling back to 10 pts silently)
+// FIX: Auto-award 'friend_made' badge when friend is connected
 
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
@@ -264,7 +267,7 @@ router.get('/audit-log', async (req, res, next) => {
 router.get('/messages/:friendId', async (req, res, next) => {
   try {
     const myId = req.user.id;
-    const friendId = parseInt(req.params.friendId);
+    const friendId = req.params.friendId;
     const messages = await Message.findAll({
       where: {
         [Op.or]: [
@@ -289,11 +292,11 @@ router.post('/messages/:friendId', [
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const myId = req.user.id;
-    const friendId = parseInt(req.params.friendId);
+    const friendId = req.params.friendId;
 
     const me = await User.unscoped().findByPk(myId);
-    const friendIds = me.friends || [];
-    if (!friendIds.includes(friendId)) {
+    const friendIds = (me.friends || []).map(String);
+    if (!friendIds.includes(String(friendId))) {
       return res.status(403).json({ error: 'You are not friends with this user' });
     }
 
