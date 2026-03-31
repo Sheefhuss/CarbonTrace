@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -20,9 +22,20 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  }
+});
+
 app.use(helmet());
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL,
   credentials: true,
 }));
 
@@ -87,6 +100,22 @@ app.use('*', (req, res) => {
 
 app.use(errorHandler);
 
+io.on('connection', (socket) => {
+  logger.info(`New client connected: ${socket.id}`);
+
+  socket.on('user_online', (userId) => {
+    io.emit('status_update', { userId, status: 'online' });
+  });
+
+  socket.on('send_message', (messageData) => {
+    io.emit('receive_message', messageData);
+  });
+
+  socket.on('disconnect', () => {
+    logger.info(`Client disconnected: ${socket.id}`);
+  });
+});
+
 const startServer = async () => {
   try {
     await sequelize.authenticate();
@@ -95,13 +124,13 @@ const startServer = async () => {
     await sequelize.sync({ alter: true });
     logger.info('Database synced.');
 
-    const requiredEnv = ['JWT_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'FRONTEND_URL'];
+    const requiredEnv = ['JWT_SECRET', 'FRONTEND_URL'];
     const missing = requiredEnv.filter(k => !process.env[k]);
     if (missing.length) {
-      logger.warn(`Missing env vars: ${missing.join(', ')} — email features may not work`);
+      logger.warn(`Missing critical env vars: ${missing.join(', ')}`);
     }
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       logger.info(`CarbonTrace server running on port ${PORT}`);
     });
   } catch (err) {
@@ -112,4 +141,4 @@ const startServer = async () => {
 
 startServer();
 
-module.exports = app;
+module.exports = { app, server, io };
