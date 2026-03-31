@@ -84,6 +84,34 @@ function LeaderboardBar({ data, currentUserId }) {
   );
 }
 
+function getDateLabel(dateStr) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const d = new Date(dateStr);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function groupMessagesByDate(messages) {
+  const groups = [];
+  let lastLabel = null;
+  messages.forEach(msg => {
+    const label = getDateLabel(msg.createdAt);
+    if (label !== lastLabel) {
+      groups.push({ type: 'separator', label });
+      lastLabel = label;
+    }
+    groups.push({ type: 'message', msg });
+  });
+  return groups;
+}
+
 function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -94,7 +122,9 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const isOnline = onlineUsers[friend.id] || false;
 
   useEffect(() => {
-    axios.get(`/api/users/messages/${friend.id}`).then(r => setMessages(r.data));
+    axios.get(`/api/users/messages/${friend.id}`)
+      .then(r => setMessages(r.data))
+      .catch(() => {});
   }, [friend.id]);
 
   useEffect(() => {
@@ -143,6 +173,8 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
     setDeleteMenu(null);
   };
 
+  const grouped = groupMessagesByDate(messages);
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDeleteMenu(null)}>
       <div className="w-full sm:max-w-md bg-forest-900 border border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col h-[70vh] sm:h-[520px]" onClick={e => e.stopPropagation()}>
@@ -157,15 +189,27 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 flex items-center justify-center"><X size={16} /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {messages.map((msg) => {
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {grouped.map((item, idx) => {
+            if (item.type === 'separator') {
+              return (
+                <div key={`sep-${idx}`} className="flex items-center gap-2 py-2">
+                  <div className="flex-1 h-px bg-white/8" />
+                  <span className="text-xs text-forest-500 px-2 shrink-0">{item.label}</span>
+                  <div className="flex-1 h-px bg-white/8" />
+                </div>
+              );
+            }
+            const { msg } = item;
             const isMe = msg.senderId === currentUser.id;
+            const time = new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
             return (
-              <div key={msg.id} className={clsx('flex gap-2', isMe ? 'justify-end' : 'justify-start')}>
+              <div key={msg.id} className={clsx('flex gap-2 group', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
                 <div className="relative max-w-[75%]">
                   <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer', isMe ? 'bg-forest-500 text-white rounded-tr-sm' : 'bg-white/8 text-forest-100 rounded-tl-sm')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
                     <p>{msg.text}</p>
+                    <p className={clsx('text-xs mt-1', isMe ? 'text-forest-200' : 'text-forest-500')}>{time}</p>
                   </div>
                   {deleteMenu === msg.id && isMe && (
                     <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl min-w-[160px]">
@@ -280,7 +324,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5"><Plus size={16} /> Log</button>
         </div>
 
-        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5">
+        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-xs text-forest-400 uppercase tracking-widest">This month</p>
