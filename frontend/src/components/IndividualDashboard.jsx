@@ -298,10 +298,18 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
       setOnlineUsers(prev => ({ ...prev, [userId]: status === 'online' }));
     };
 
+    const handleSync = (onlineIds) => {
+      const initialStatus = {};
+      onlineIds.forEach(id => { initialStatus[id] = true; });
+      setOnlineUsers(prev => ({ ...prev, ...initialStatus }));
+    };
+
     socket.on('status_update', handleStatusUpdate);
+    socket.on('sync_online_users', handleSync);
 
     return () => {
       socket.off('status_update', handleStatusUpdate);
+      socket.off('sync_online_users', handleSync);
     };
   }, [user?.id]);
 
