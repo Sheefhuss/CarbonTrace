@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Leaf, Plus, Trophy, Target, Zap, TrendingDown, TrendingUp,
   Users, MessageCircle, Send, X, ChevronRight, Star, Award,
-  BarChart2, Flame, RefreshCw
+  BarChart2, Flame, RefreshC
 } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
