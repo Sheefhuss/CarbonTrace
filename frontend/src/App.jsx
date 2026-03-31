@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './context/authStore';
 
@@ -9,10 +8,6 @@ import QuizPage from './pages/QuizPage';
 import DashboardPage from './pages/DashboardPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-
-// NOTE: CarbonBot is intentionally NOT imported here.
-// It is rendered inside DashboardPage with user + emissions props.
-
 const ProtectedRoute = ({ children }) => {
   const { token, isInitializing } = useAuthStore();
 
@@ -25,10 +20,20 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!token) return <Navigate to="/login" replace />;
-  return children;   // ← no CarbonBot here anymore
+  return children; // ← no CarbonBot here anymore
 };
 
 function App() {
+  // ✅ FIX: Call initialize() once on mount so the auth store
+  // fetches the user from the stored token (or clears it if expired).
+  // Without this, isInitializing stays true forever → spinner never ends,
+  // and visiting /dashboard without a token causes a crash.
+  const initialize = useAuthStore(state => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Router>
       <Routes>
