@@ -23,7 +23,6 @@ module.exports = (sequelize) => sequelize.define('User', {
   username: {
     type: DataTypes.STRING,
     allowNull: true,
-    unique: true,
     comment: 'Public display handle e.g. @eco_ravi — never exposes email',
   },
   avatarIndex: {
