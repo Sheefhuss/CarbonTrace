@@ -5,6 +5,7 @@ module.exports = (sequelize) => sequelize.define('Message', {
   senderId: { type: DataTypes.UUID, allowNull: false },
   receiverId: { type: DataTypes.UUID, allowNull: false },
   text: { type: DataTypes.TEXT, allowNull: false },
+  readAt: { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName: 'messages',
   timestamps: true,
