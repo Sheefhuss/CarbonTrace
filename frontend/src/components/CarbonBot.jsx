@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Send, Minimize2 } from 'lucide-react';
 import clsx from 'clsx';
@@ -280,9 +279,9 @@ export default function CarbonBot({ user, emissions = [] }) {
       {/* ── Chat window ──────────────────────────────────────────────────────── */}
       {open && (
         <div className={clsx(
-          'fixed bottom-6 right-6 z-50 w-80 sm:w-96 bg-forest-900 border border-white/10',
-          'rounded-2xl shadow-2xl shadow-black/40 flex flex-col transition-all duration-300',
-          minimised ? 'h-14' : 'h-[560px]'
+          'fixed z-50 bg-forest-900 border border-white/10 shadow-2xl shadow-black/40 flex flex-col transition-all duration-300',
+          'bottom-0 left-0 right-0 rounded-t-2xl sm:bottom-6 sm:left-auto sm:right-6 sm:rounded-2xl sm:w-96',
+          minimised ? 'h-14' : 'h-[85dvh] sm:h-[560px]'
         )}>
 
           {/* Header */}
