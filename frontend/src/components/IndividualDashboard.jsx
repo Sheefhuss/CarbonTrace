@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trophy, Users, MessageCircle, Send, X, Leaf, CheckCircle, Lightbulb } from 'lucide-react';
+import { Plus, Trophy, Users, MessageCircle, Send, X, Leaf, CheckCircle, Lightbulb, RefreshCw } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
 import { useAITips } from '../hooks/useData';
@@ -161,12 +161,12 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     } catch (err) { setFriendMsg(`❌ ${err.response?.data?.error || 'Error adding friend'}`); }
   };
 
-  const challenges = CHALLENGES.map(c => {
-    const progress = c.check(emissions, user);
+  const challenges = (CHALLENGES || []).map(c => {
+    const progress = typeof c.check === 'function' ? c.check(emissions, user) : 0;
     const pct = Math.min(Math.round((progress / c.target) * 100), 100);
     const completed = user?.completedChallenges?.includes(`${c.id}_${weekKey}`) || pct >= 100;
     return { ...c, progress, pct, completed };
-  });
+});
 
   const groupedActivities = [];
   let lastActLabel = null;
