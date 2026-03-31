@@ -1,4 +1,3 @@
-
 export const formatCO2 = (kg) => {
   if (kg == null) return '0 kg';
   if (kg >= 1000) return `${(kg / 1000).toFixed(2)} t CO₂e`;
@@ -114,7 +113,7 @@ export const getDailyFact = () => {
   return DAILY_FACTS[day % DAILY_FACTS.length];
 };
 
-// FIX: getWeekStart moved to TOP — before CHALLENGES which calls it inside check functions
+// Internal helper for date calculations
 const getWeekStart = () => {
   const now = new Date();
   const day = now.getDay(); // 0=Sun
@@ -122,7 +121,6 @@ const getWeekStart = () => {
   return new Date(new Date(now).setDate(diff)).toISOString().split('T')[0];
 };
 
-// ── ISO week key for challenge deduplication ──────────────────────────────────
 const getISOWeekKey = () => {
   const now = new Date();
   const jan1 = new Date(now.getFullYear(), 0, 1);
@@ -176,21 +174,22 @@ export const computeBadges = (user, emissions) => {
   return BADGES.map(b => ({ ...b, earned: b.condition(stats) }));
 };
 
-export const CHALLENGES = [
+const ALL_CHALLENGES = [
   {
     id: 'no_meat_week',
     icon: '🥗',
     name: 'No-Meat Week',
     desc: 'Log 7 plant-based meals this week',
     target: 7,
-    unit: 'plant-based meals',
+    unit: 'meals',
     points: 60,
+    type: 'weekly',
     check: (emissions) => {
       const weekStart = getWeekStart();
       return emissions.filter(e => {
         if (e.date < weekStart) return false;
         const s = (e.subCategory || '').toLowerCase();
-        return s.includes('vegan') || s.includes('vegetarian') || s.includes('plant') || s.includes('dal');
+        return s.includes('vegan') || s.includes('vegetarian') || s.includes('plant');
       }).length;
     },
   },
@@ -198,115 +197,79 @@ export const CHALLENGES = [
     id: 'green_commute',
     icon: '🚌',
     name: 'Green Commute',
-    desc: 'Use public transport or walk/cycle 5 times this week',
+    desc: '5 eco-friendly trips this week',
     target: 5,
-    unit: 'eco trips',
+    unit: 'trips',
     points: 50,
+    type: 'weekly',
     check: (emissions) => {
       const weekStart = getWeekStart();
       return emissions.filter(e => {
         if (e.date < weekStart) return false;
         const s = (e.subCategory || '').toLowerCase();
-        return s.includes('bus') || s.includes('metro') || s.includes('transit') ||
-               s.includes('bicycle') || s.includes('walk') || s.includes('public');
+        return s.includes('bus') || s.includes('metro') || s.includes('walk') || s.includes('bicycle');
       }).length;
     },
   },
   {
-    id: 'log_streak',
-    icon: '🔥',
-    name: '5-Day Logger',
-    desc: 'Log an activity every day for 5 days straight',
+    id: 'low_carbon',
+    icon: '🌱',
+    name: 'Low Carbon',
+    desc: 'Log 5 entries under 2kg CO₂',
     target: 5,
-    unit: 'days logged',
+    unit: 'logs',
     points: 40,
-    check: (emissions, user) => Math.min(user?.streakDays || 0, 5),
-  },
-  {
-    id: 'light_month',
-    icon: '🌍',
-    name: 'Light Footprint',
-    desc: "Keep this month's total under 300 kg CO₂",
-    target: 1,
-    unit: 'goal met',
-    points: 80,
-    check: (emissions) => {
-      const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const total = emissions
-        .filter(e => e.date >= start)
-        .reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
-      return total < 300 && total > 0 ? 1 : 0;
-    },
-  },
-  {
-    id: 'cycle_hero',
-    icon: '🚴',
-    name: 'Cycle Hero',
-    desc: 'Log 3 cycling or walking trips this week',
-    target: 3,
-    unit: 'zero-emission trips',
-    points: 45,
+    type: 'weekly',
     check: (emissions) => {
       const weekStart = getWeekStart();
-      return emissions.filter(e => {
-        if (e.date < weekStart) return false;
-        const s = (e.subCategory || '').toLowerCase();
-        const cat = (e.category || '').toLowerCase();
-        return s.includes('bicycle') || s.includes('walk') || s.includes('cycle') ||
-               s === 'bicycle / walk' ||
-               (cat === 'transport' && parseFloat(e.co2eKg || 0) === 0);
-      }).length;
+      return emissions.filter(e => e.date >= weekStart && parseFloat(e.co2eKg || 0) <= 2).length;
     },
   },
   {
-    id: 'vegan_day',
-    icon: '🥦',
-    name: 'Plant Power',
-    desc: 'Log 3 fully vegan meals this week',
-    target: 3,
-    unit: 'vegan meals',
-    points: 35,
-    check: (emissions) => {
-      const weekStart = getWeekStart();
-      return emissions.filter(e => {
-        if (e.date < weekStart) return false;
-        const s = (e.subCategory || '').toLowerCase();
-        return s.includes('vegan') || s.includes('plant-based') || s.includes('plant based') ||
-               s.includes('strictly plant');
-      }).length;
-    },
-  },
-  {
-    id: 'zero_waste_week',
-    icon: '♻️',
-    name: 'Zero Waste Week',
-    desc: 'Log 5 low-carbon activities (under 2 kg CO₂ each) this week',
+    id: 'streak_master',
+    icon: '🔥',
+    name: 'Streak Master',
+    desc: 'Maintain a 5-day streak',
     target: 5,
-    unit: 'low-carbon logs',
-    points: 55,
-    check: (emissions) => {
-      const weekStart = getWeekStart();
-      return emissions.filter(e => {
-        if (e.date < weekStart) return false;
-        return parseFloat(e.co2eKg || 0) <= 2;
-      }).length;
-    },
+    unit: 'days',
+    points: 70,
+    type: 'streak',
+    check: (_, user) => Math.min(user?.streakDays || 0, 5),
   },
   {
-    id: 'solar_saver',
-    icon: '☀️',
-    name: 'Solar Saver',
-    desc: 'Keep your total emissions under 50 kg this week',
-    target: 1,
-    unit: 'goal met',
-    points: 70,
+    id: 'transport_focus',
+    icon: '🚗',
+    name: 'Transport Control',
+    desc: 'Reduce transport entries',
+    target: 3,
+    unit: 'low trips',
+    points: 45,
+    type: 'dynamic',
     check: (emissions) => {
       const weekStart = getWeekStart();
-      const total = emissions
-        .filter(e => e.date >= weekStart)
-        .reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
-      return total < 50 && total > 0 ? 1 : 0;
+      return emissions.filter(e => e.date >= weekStart && e.category !== 'transport').length;
     },
-  },
+  }
 ];
+
+const getWeekSeed = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${Math.ceil((now.getDate() + 6 - now.getDay()) / 7)}`;
+};
+
+const seededShuffle = (array, seed) => {
+  let result = [...array];
+  let random = seed.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+
+  for (let i = result.length - 1; i > 0; i--) {
+    random = (random * 9301 + 49297) % 233280;
+    const j = Math.floor((random / 233280) * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+};
+
+export const CHALLENGES = (() => {
+  const seed = getWeekSeed();
+  return seededShuffle(ALL_CHALLENGES, seed).slice(0, 3);
+})();
