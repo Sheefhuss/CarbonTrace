@@ -6,15 +6,13 @@ import {
 } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
-import { useEmissions, useAITips } from '../hooks/useData';
+import { useAITips } from '../hooks/useData';
 import {
   formatCO2, fmtDate, COUNTRY_AVERAGES, getDailyFact,
   computeBadges, CHALLENGES, getCurrentWeekKey, detectUserLocation
 } from '../utils/helpers';
 import axios from 'axios';
 import clsx from 'clsx';
-
-// ── Subway-Surfer style coin toast ───────────────────────────────────────────
 function CoinToast({ points, visible, onDone }) {
   useEffect(() => {
     if (visible) {
@@ -38,8 +36,6 @@ function CoinToast({ points, visible, onDone }) {
     </div>
   );
 }
-
-// ── Leaderboard bar chart ────────────────────────────────────────────────────
 function LeaderboardBar({ data, currentUserId }) {
   const top = data.slice(0, 8);
   const maxScore = Math.max(...top.map(u => u.score), 1);
@@ -92,8 +88,6 @@ function LeaderboardBar({ data, currentUserId }) {
     </div>
   );
 }
-
-// ── Friend Chat Modal ────────────────────────────────────────────────────────
 function FriendChatModal({ friend, currentUser, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -203,9 +197,10 @@ function FriendChatModal({ friend, currentUser, onClose }) {
 }
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
-export default function IndividualDashboard({ setShowLogModal }) {
+// FIX: emissions, emissionsLoading, refetch are now passed from DashboardPage
+// so there is a single useEmissions instance — avoids stale data after logging
+export default function IndividualDashboard({ setShowLogModal, emissions, emissionsLoading, refetch }) {
   const { user, updateUser } = useAuthStore();
-  const { emissions, loading: emissionsLoading, refetch } = useEmissions();
   const [leaderboard, setLeaderboard] = useState([]);
   const [friends, setFriends] = useState([]);
   const [friendCode, setFriendCode] = useState('');
@@ -719,7 +714,6 @@ export default function IndividualDashboard({ setShowLogModal }) {
   );
 }
 
-// Static fallback used before hook resolves
 const FALLBACK_TIPS_STATIC = [
   { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
   { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
