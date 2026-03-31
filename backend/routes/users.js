@@ -1,11 +1,8 @@
-// FILE: backend/routes/users.js
-// FIX: Added 'friend_made' to BADGE_POINTS (was missing, falling back to 10 pts silently)
-// FIX: Auto-award 'friend_made' badge when friend is connected
 
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { Op, fn, col } = require('sequelize');
-const { User, AuditLog, EmissionEntry } = require('../models');
+const { User, AuditLog, EmissionEntry, Message } = require('../models');
 const { authenticate } = require('../middleware/auth');
 const { createAuditLog } = require('../utils/audit');
 const { AppError } = require('../middleware/errorHandler');
@@ -259,6 +256,53 @@ router.get('/audit-log', async (req, res, next) => {
       limit: 100,
     });
     res.json(logs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/messages/:friendId', async (req, res, next) => {
+  try {
+    const myId = req.user.id;
+    const friendId = parseInt(req.params.friendId);
+    const messages = await Message.findAll({
+      where: {
+        [Op.or]: [
+          { senderId: myId, receiverId: friendId },
+          { senderId: friendId, receiverId: myId },
+        ],
+      },
+      order: [['createdAt', 'ASC']],
+      limit: 100,
+    });
+    res.json(messages);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/messages/:friendId', [
+  body('text').trim().notEmpty().isLength({ max: 1000 }),
+], async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const myId = req.user.id;
+    const friendId = parseInt(req.params.friendId);
+
+    const me = await User.unscoped().findByPk(myId);
+    const friendIds = me.friends || [];
+    if (!friendIds.includes(friendId)) {
+      return res.status(403).json({ error: 'You are not friends with this user' });
+    }
+
+    const message = await Message.create({
+      senderId: myId,
+      receiverId: friendId,
+      text: req.body.text,
+    });
+    res.status(201).json(message);
   } catch (err) {
     next(err);
   }
