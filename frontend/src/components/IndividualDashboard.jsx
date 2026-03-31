@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Leaf, Plus, Trophy, Target, Zap, TrendingDown, TrendingUp,
   Users, MessageCircle, Send, X, ChevronRight, Star, Award,
-  BarChart2, Flame, RefreshCw
+  BarChart2, Flame, RefreshCw, CheckCircle
 } from 'lucide-react';
 import { AvatarDisplay, AvatarPickerModal } from './AvatarComponents';
 import useAuthStore from '../context/authStore';
@@ -15,82 +15,10 @@ import axios from 'axios';
 import clsx from 'clsx';
 import socket from '../socket';
 
-function CoinToast({ points, visible, onDone }) {
-  useEffect(() => {
-    if (visible) {
-      const t = setTimeout(onDone, 2200);
-      return () => clearTimeout(t);
-    }
-  }, [visible, onDone]);
-
-  if (!visible) return null;
-  return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] pointer-events-none">
-      <div className="flex items-center gap-2 px-5 py-3 rounded-2xl shadow-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500 to-yellow-400 animate-[coinPop_2.2s_ease-out_forwards]">
-        <span className="text-2xl animate-[coinSpin_0.4s_ease-in-out_infinite]">🪙</span>
-        <div>
-          <p className="text-amber-950 font-black text-lg leading-none">+{points} pts</p>
-          <p className="text-amber-900 text-xs font-semibold">Points earned!</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LeaderboardBar({ data, currentUserId }) {
-  const top = data.slice(0, 8);
-  const maxScore = Math.max(...top.map(u => u.score), 1);
-  const medals = ['🥇', '🥈', '🥉'];
-
-  return (
-    <div className="space-y-2.5">
-      {top.map((user, i) => {
-        const pct = Math.round((user.score / maxScore) * 100);
-        const isMe = user.id === currentUserId;
-        return (
-          <div key={user.id} className={clsx('relative rounded-xl overflow-hidden', isMe ? 'ring-2 ring-forest-400' : '')}>
-            <div className="absolute inset-0 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }} />
-            <div
-              className="absolute inset-y-0 left-0 rounded-xl transition-all duration-700"
-              style={{
-                width: `${pct}%`,
-                background: isMe
-                  ? 'linear-gradient(90deg, rgba(64,146,109,0.5), rgba(100,177,140,0.3))'
-                  : 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
-              }}
-            />
-            <div className="relative flex items-center gap-3 px-3 py-2.5">
-              <span className="text-lg w-6 text-center shrink-0">
-                {medals[i] || <span className="text-forest-500 font-bold text-sm">{i + 1}</span>}
-              </span>
-              <AvatarDisplay index={user.avatarIndex ?? 0} size="sm" />
-              <div className="flex-1 min-w-0">
-                <p className={clsx('text-sm font-semibold truncate', isMe ? 'text-forest-300' : 'text-white')}>
-                  {user.name}
-                </p>
-                <p className="text-xs text-forest-500">
-                  🔥{user.streakDays}d · {user.activityCount} logs
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold text-white">{user.score}</p>
-                <p className="text-xs text-forest-500">{user.points} pts</p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function getDateLabel(dateStr) {
   const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const d = new Date(dateStr);
   if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
@@ -98,142 +26,105 @@ function getDateLabel(dateStr) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-function groupMessagesByDate(messages) {
-  const groups = [];
-  let lastLabel = null;
-  messages.forEach(msg => {
-    const label = getDateLabel(msg.createdAt);
-    if (label !== lastLabel) {
-      groups.push({ type: 'separator', label });
-      lastLabel = label;
-    }
-    groups.push({ type: 'message', msg });
-  });
-  return groups;
-}
-
 function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
   const [deleteMenu, setDeleteMenu] = useState(null);
   const bottomRef = useRef(null);
-
   const isOnline = onlineUsers[friend.id] || false;
 
   useEffect(() => {
-    axios.get(`/api/users/messages/${friend.id}`)
-      .then(r => setMessages(r.data))
-      .catch(() => {});
+    axios.get(`/api/users/messages/${friend.id}`).then(r => setMessages(r.data));
   }, [friend.id]);
 
   useEffect(() => {
-    const handleNewMessage = (msg) => {
+    const handleNew = (msg) => { 
       if (msg.senderId === friend.id) {
-        setMessages(prev => (prev.find(m => m.id === msg.id) ? prev : [...prev, msg]));
+        setMessages(p => (p.find(m => m.id === msg.id) ? p : [...p, msg]));
       }
     };
-    const handleDeletedMessage = (messageId) => {
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-    };
-    socket.on('receive_message', handleNewMessage);
-    socket.on('message_deleted', handleDeletedMessage);
-    return () => {
-      socket.off('receive_message', handleNewMessage);
-      socket.off('message_deleted', handleDeletedMessage);
-    };
+    const handleDel = (id) => setMessages(p => p.filter(m => m.id !== id));
+    socket.on('receive_message', handleNew);
+    socket.on('message_deleted', handleDel);
+    return () => { socket.off('receive_message', handleNew); socket.off('message_deleted', handleDel); };
   }, [friend.id]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || sending) return;
-    setSending(true);
+  const send = async () => {
+    if (!input.trim()) return;
     try {
       const res = await axios.post(`/api/users/messages/${friend.id}`, { text: input.trim() });
-      setMessages(prev => [...prev, res.data]);
+      setMessages(p => [...p, res.data]);
       socket.emit('send_message', res.data);
       setInput('');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSending(false);
-    }
+    } catch (err) {}
   };
 
-  const handleDeleteForEveryone = async (msgId) => {
+  const del = async (id) => {
     try {
-      await axios.delete(`/api/users/messages/${msgId}`);
-      socket.emit('delete_message', msgId);
-    } catch (err) {
-      console.error(err);
-    }
-    setDeleteMenu(null);
+      await axios.delete(`/api/users/messages/${id}`);
+      socket.emit('delete_message', id);
+      setDeleteMenu(null);
+    } catch (err) {}
   };
 
-  const grouped = groupMessagesByDate(messages);
+  const grouped = [];
+  let last = null;
+  messages.forEach(m => {
+    const l = getDateLabel(m.createdAt || m.date);
+    if (l !== last) { grouped.push({ type: 'sep', label: l }); last = l; }
+    grouped.push({ type: 'msg', data: m });
+  });
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDeleteMenu(null)}>
-      <div className="w-full sm:max-w-md bg-forest-900 border border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col h-[70vh] sm:h-[520px]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-3 p-4 border-b border-white/10 shrink-0">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setDeleteMenu(null)}>
+      <div className="w-full max-w-md bg-forest-900 border border-white/10 rounded-3xl flex flex-col h-[600px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 p-4 bg-white/5 border-b border-white/10">
           <div className="relative">
-            <AvatarDisplay index={friend.avatarIndex ?? 0} size="md" />
-            <span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', isOnline ? 'bg-green-400' : 'bg-forest-600')} />
+            <AvatarDisplay index={friend.avatarIndex} size="md" />
+            <span className={clsx("absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-forest-900", isOnline ? "bg-green-500" : "bg-forest-700")} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-white">{friend.name}</p>
-            <p className="text-xs text-forest-400">{isOnline ? 'Online' : 'Offline'} · @{friend.username}</p>
+          <div className="flex-1">
+            <p className="font-bold text-white text-base">{friend.name}</p>
+            <p className="text-xs text-forest-400 font-medium">{isOnline ? 'Online now' : 'Offline'}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-white/10 text-forest-400 flex items-center justify-center"><X size={16} /></button>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white transition-colors"><X size={20}/></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          {messages.length === 0 && (
-            <div className="text-center text-forest-500 text-sm mt-8">
-              <span className="text-2xl block mb-2">🌿</span>
-              Start a conversation with {friend.name.split(' ')[0]}!<br />
-              <span className="text-xs">Messages are synced in real time.</span>
-            </div>
-          )}
-          {grouped.map((item, idx) => {
-            if (item.type === 'separator') {
-              return (
-                <div key={`sep-${idx}`} className="flex items-center gap-2 py-3">
-                  <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-[10px] uppercase tracking-widest text-forest-500 px-3 font-bold">{item.label}</span>
-                  <div className="flex-1 h-px bg-white/5" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+          {grouped.map((item, i) => item.type === 'sep' ? (
+            <div key={i} className="flex items-center py-4"><div className="flex-1 h-px bg-white/5"/><span className="text-[10px] uppercase text-forest-500 px-4 font-black tracking-widest">{item.label}</span><div className="flex-1 h-px bg-white/5"/></div>
+          ) : (
+            <div key={item.data.id} className={clsx('flex flex-col', item.data.senderId === currentUser.id ? 'items-end' : 'items-start')}>
+              <div className="relative group max-w-[85%]">
+                <div 
+                  className={clsx('px-4 py-2.5 rounded-2xl text-sm transition-all', item.data.senderId === currentUser.id ? 'bg-forest-500 text-white rounded-tr-none' : 'bg-white/10 text-forest-100 rounded-tl-none')}
+                  onClick={(e) => { e.stopPropagation(); if(item.data.senderId === currentUser.id) setDeleteMenu(deleteMenu === item.data.id ? null : item.data.id); }}
+                >
+                  {item.data.text}
                 </div>
-              );
-            }
-            const { msg } = item;
-            const isMe = msg.senderId === currentUser.id;
-            const time = new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            return (
-              <div key={msg.id} className={clsx('flex gap-2 group', isMe ? 'justify-end' : 'justify-start')}>
-                {!isMe && <AvatarDisplay index={friend.avatarIndex ?? 0} size="sm" />}
-                <div className="relative max-w-[75%]">
-                  <div className={clsx('px-3 py-2 rounded-2xl text-sm cursor-pointer transition-all', isMe ? 'bg-forest-500 text-white rounded-tr-sm hover:bg-forest-400' : 'bg-white/8 text-forest-100 rounded-tl-sm hover:bg-white/12')} onClick={() => setDeleteMenu(deleteMenu === msg.id ? null : msg.id)}>
-                    <p>{msg.text}</p>
-                    <p className={clsx('text-[10px] mt-1 text-right opacity-60')}>{time}</p>
+                {deleteMenu === item.data.id && (
+                  <div className="absolute right-0 top-full mt-1 z-20">
+                    <button onClick={() => del(item.data.id)} className="bg-red-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-xl hover:bg-red-600 transition-colors">Delete for everyone</button>
                   </div>
-                  {deleteMenu === msg.id && isMe && (
-                    <div className="absolute z-10 mt-1 right-0 bg-forest-800 border border-white/10 rounded-xl shadow-xl min-w-[160px] overflow-hidden">
-                      <button onClick={() => handleDeleteForEveryone(msg.id)} className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-all font-semibold">🗑️ Delete for everyone</button>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            );
-          })}
+              <span className="text-[9px] text-forest-600 mt-1 px-1 font-bold">
+                {new Date(item.data.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))}
           <div ref={bottomRef} />
         </div>
-        <div className="p-3 border-t border-white/10 shrink-0 bg-forest-950/30">
-          <div className="flex gap-2 items-end">
-            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)} placeholder={`Message ${friend.name.split(' ')[0]}...`} className="flex-1 bg-white/8 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-forest-500 transition-all" onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} />
-            <button onClick={sendMessage} disabled={!input.trim() || sending} className="w-10 h-10 rounded-xl bg-forest-500 hover:bg-forest-400 flex items-center justify-center disabled:opacity-40 transition-all active:scale-95"><Send size={16} className="text-white"/></button>
-          </div>
+        <div className="p-4 bg-white/5 border-t border-white/10 flex gap-2">
+          <input 
+            value={input} 
+            onChange={e => setInput(e.target.value)} 
+            placeholder="Type your message..."
+            className="flex-1 bg-forest-950/50 border border-white/5 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 transition-all" 
+            onKeyDown={e => e.key === 'Enter' && send()}
+          />
+          <button onClick={send} className="bg-forest-500 hover:bg-forest-400 p-3 rounded-2xl text-white transition-all active:scale-95 shadow-lg shadow-forest-500/20"><Send size={20}/></button>
         </div>
       </div>
     </div>
@@ -242,194 +133,271 @@ function FriendChatModal({ friend, currentUser, onClose, onlineUsers }) {
 
 export default function IndividualDashboard({ setShowLogModal, emissions, emissionsLoading, refetch }) {
   const { user, updateUser } = useAuthStore();
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
   const [friends, setFriends] = useState([]);
-  const [unreadCounts, setUnreadCounts] = useState({});
-  const [onlineUsers, setOnlineUsers] = useState({});
+  const [unread, setUnread] = useState({});
+  const [online, setOnline] = useState({});
   const [friendCode, setFriendCode] = useState('');
   const [friendMsg, setFriendMsg] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
-  const [coinToast, setCoinToast] = useState({ visible: false, points: 0 });
-  const [location, setLocation] = useState(null);
   const [chatFriend, setChatFriend] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-  
-  const { tips, loading: tipsLoading, generateTips } = useAITips(emissions, user, location);
-  const dailyFact = getDailyFact();
+  const { tips, loading: tipsLoading } = useAITips(emissions, user);
   const badges = computeBadges(user, emissions);
-
-  useEffect(() => {
-    detectUserLocation().then(loc => { if (loc) setLocation(loc); });
-    axios.get('/api/dashboard/leaderboard').then(r => setLeaderboard(r.data.leaderboard || []));
-  }, []);
-
-  useEffect(() => {
-    if (emissions.length > 0 && !tips) generateTips();
-  }, [emissions.length, tips, generateTips]);
+  const weekKey = getCurrentWeekKey();
 
   useEffect(() => {
     if (!user?.id) return;
     const announce = () => socket.emit('user_online', user.id);
     socket.on('connect', announce);
-    socket.on('status_update', ({ userId, status }) => setOnlineUsers(p => ({ ...p, [userId]: status === 'online' })));
-    socket.on('sync_online_users', (ids) => {
-      const statuses = {};
-      ids.forEach(id => statuses[id] = true);
-      setOnlineUsers(statuses);
-    });
+    socket.on('status_update', ({ userId, status }) => setOnline(p => ({ ...p, [userId]: status === 'online' })));
+    socket.on('sync_online_users', (ids) => { const s = {}; ids.forEach(id => s[id] = true); setOnline(s); });
     if (socket.connected) announce();
-    return () => {
-      socket.off('connect', announce);
-      socket.off('status_update');
-      socket.off('sync_online_users');
-    };
+    return () => { socket.off('connect'); socket.off('status_update'); socket.off('sync_online_users'); };
   }, [user?.id]);
 
   useEffect(() => {
-    axios.get('/api/users/friends').then(r => setFriends(r.data || []));
-    axios.get('/api/users/messages/unread-counts').then(r => setUnreadCounts(r.data || {}));
+    axios.get('/api/users/friends').then(r => setFriends(r.data));
+    axios.get('/api/users/messages/unread-counts').then(r => setUnread(r.data));
+    axios.get('/api/dashboard/leaderboard').then(r => setLeaderboard(r.data.leaderboard || []));
   }, [user?.id]);
 
-  const handleAddFriend = async (e) => {
+  const addFriend = async (e) => {
     e.preventDefault();
+    if (!friendCode.trim()) return;
     try {
       const res = await axios.post('/api/users/connect-friend', { friendCode });
-      setFriendMsg(`✅ ${res.data.message}`);
-      setFriendCode('');
+      setFriendMsg(`✅ ${res.data.message}`); setFriendCode('');
       axios.get('/api/users/friends').then(r => setFriends(r.data));
-    } catch (err) {
-      setFriendMsg(`❌ ${err.response?.data?.error || 'Failed'}`);
-    }
+    } catch (err) { setFriendMsg(`❌ ${err.response?.data?.error || 'Error adding friend'}`); }
   };
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const monthlyKg = emissions.filter(e => e.date >= startOfMonth).reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
+  const challenges = CHALLENGES.map(c => {
+    const progress = c.check(emissions, user);
+    const pct = Math.min(Math.round((progress / c.target) * 100), 100);
+    const completed = user?.completedChallenges?.includes(`${c.id}_${weekKey}`) || pct >= 100;
+    return { ...c, progress, pct, completed };
+  });
+
+  const monthlyKg = emissions.filter(e => new Date(e.date).getMonth() === new Date().getMonth()).reduce((s, e) => s + parseFloat(e.co2eKg), 0);
   const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
 
   return (
-    <>
-      <CoinToast points={coinToast.points} visible={coinToast.visible} onDone={() => setCoinToast(v => ({ ...v, visible: false }))} />
-      {chatFriend && <FriendChatModal friend={chatFriend} currentUser={user} onClose={() => setChatFriend(null)} onlineUsers={onlineUsers} />}
-      {showAvatarModal && <AvatarPickerModal current={user?.avatarIndex} onClose={() => setShowAvatarModal(false)} onSave={async (newIndex) => { try { updateUser({ avatarIndex: newIndex }); setShowAvatarModal(false); await axios.put('/api/auth/profile', { avatarIndex: newIndex }); } catch (err) {} }} />}
+    <div className="space-y-6 pb-24 max-w-4xl mx-auto">
+      {chatFriend && <FriendChatModal friend={chatFriend} currentUser={user} onClose={() => setChatFriend(null)} onlineUsers={online} />}
+      {showAvatarModal && <AvatarPickerModal current={user?.avatarIndex} onClose={() => setShowAvatarModal(false)} onSave={async (idx) => { updateUser({ avatarIndex: idx }); setShowAvatarModal(false); await axios.put('/api/auth/profile', { avatarIndex: idx }); }} />}
 
-      <div className="space-y-6 pb-24">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-xl overflow-hidden cursor-pointer shadow-lg shadow-black/20">
-              <AvatarDisplay index={user?.avatarIndex ?? 0} size="lg" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-white text-xs">Edit</div>
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-white">Hi, {user?.name?.split(' ')[0]} 👋</h1>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-400/30 text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">🔥 {user?.streakDays || 0}d streak</span>
-                <span className="flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">⭐ {user?.points || 0} pts</span>
-              </div>
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setShowAvatarModal(true)} className="relative group rounded-2xl overflow-hidden shadow-xl ring-2 ring-white/5 transition-all hover:ring-forest-500">
+            <AvatarDisplay index={user?.avatarIndex} size="lg" />
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-black text-white text-[10px] uppercase tracking-widest">Edit</div>
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">Hi, {user?.name?.split(' ')[0]} 👋</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 {user?.streakDays || 0}d Streak</span>
+              <span className="bg-amber-400/20 border border-amber-400/30 text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">⭐ {user?.points || 0} Points</span>
             </div>
           </div>
-          <button onClick={() => setShowLogModal(true)} className="btn-primary flex items-center gap-2 text-sm px-4 py-2.5 shadow-lg shadow-forest-500/20"><Plus size={16} /> Log</button>
         </div>
+        <button onClick={() => setShowLogModal(true)} className="bg-forest-500 hover:bg-forest-400 text-white p-3.5 rounded-2xl shadow-lg shadow-forest-500/20 transition-all active:scale-90"><Plus size={24}/></button>
+      </div>
 
-        <div className="card bg-gradient-to-br from-forest-800/60 to-forest-900/80 p-5 shadow-xl border border-white/5">
-          <div className="flex items-center justify-between mb-4">
+      <div className="bg-gradient-to-br from-forest-800/80 to-forest-950/90 p-6 rounded-[32px] border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10"><Leaf size={120} className="text-white rotate-12"/></div>
+        <div className="relative z-10">
+          <div className="flex justify-between items-end mb-6">
             <div>
-              <p className="text-[10px] text-forest-400 uppercase tracking-[0.2em] font-bold">This month</p>
-              <p className="text-3xl font-black text-white mt-1 tracking-tight">{formatCO2(monthlyKg)}</p>
+              <p className="text-[10px] text-forest-400 uppercase tracking-[0.3em] font-black mb-1">Monthly Emissions</p>
+              <p className="text-4xl font-black text-white tracking-tighter">{formatCO2(monthlyKg)}</p>
             </div>
             <div className="text-right">
-              <p className={clsx('text-base font-bold', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
-                {monthlyKg < countryAvg ? `↓ ${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% below avg` : `↑ ${Math.round(((monthlyKg - countryAvg) / countryAvg) * 100)}% above avg`}
+              <p className={clsx('text-sm font-black uppercase tracking-widest', monthlyKg < countryAvg ? 'text-forest-400' : 'text-amber-400')}>
+                {monthlyKg < countryAvg ? 'Good Performance' : 'High Usage'}
               </p>
+              <p className="text-[11px] text-forest-500 font-bold mt-1">{Math.round(Math.abs((monthlyKg - countryAvg)/countryAvg)*100)}% {monthlyKg < countryAvg ? 'below' : 'above'} your country avg</p>
             </div>
           </div>
-          <div className="h-2 bg-forest-950/60 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-forest-400 transition-all duration-700 shadow-[0_0_10px_rgba(64,146,109,0.5)]" style={{ width: `${Math.min((monthlyKg / (countryAvg * 1.5)) * 100, 100)}%` }} /></div>
-          <p className="text-[11px] text-forest-500 mt-2 italic flex items-center gap-1.5"><Leaf size={12} /> Fact: {dailyFact.fact}</p>
+          <div className="h-3 bg-black/30 rounded-full overflow-hidden border border-white/5">
+            <div className="h-full bg-forest-500 shadow-[0_0_15px_rgba(64,146,109,0.6)] transition-all duration-1000" style={{ width: `${Math.min((monthlyKg/countryAvg)*100, 100)}%` }}/>
+          </div>
         </div>
+      </div>
 
-        <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto scrollbar-hide border border-white/5">
-          {['overview', 'challenges', 'leaderboard', 'friends', 'badges'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={clsx('flex-1 py-2 px-4 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap', activeTab === t ? 'bg-forest-500 text-white shadow-lg' : 'text-forest-400 hover:text-white hover:bg-white/5')}>
-              {t}
-            </button>
-          ))}
-        </div>
+      <div className="flex gap-1.5 bg-white/5 p-1.5 rounded-[20px] overflow-x-auto scrollbar-hide border border-white/5 shadow-inner">
+        {['overview', 'challenges', 'leaderboard', 'friends', 'badges'].map(t => (
+          <button 
+            key={t} 
+            onClick={() => setActiveTab(t)} 
+            className={clsx('flex-1 py-2.5 px-5 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap', activeTab === t ? 'bg-forest-500 text-white shadow-lg' : 'text-forest-500 hover:text-white hover:bg-white/5')}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
 
-        {activeTab === 'overview' && (
-          <div className="space-y-4">
-            <div className="card p-4 border border-white/5 bg-white/2">
-              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🤖</span> Personalised Tips</h3>
-              {tipsLoading && <div className="w-4 h-4 border-2 border-forest-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />}
-              {(tips || []).map((tip, i) => (
-                <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/5 mb-2 last:mb-0 border border-white/5 hover:bg-white/8 transition-all">
-                  <span className="text-xl shrink-0">{tip.icon}</span>
-                  <div><p className="text-sm font-bold text-white">{tip.title}</p><p className="text-xs text-forest-300 mt-0.5 leading-relaxed">{tip.desc}</p></div>
-                </div>
-              ))}
-            </div>
-            <div className="card p-4 border border-white/5 bg-white/2">
-              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4">Recent Activity</h3>
+      {activeTab === 'overview' && (
+        <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4 flex items-center gap-2">🤖 Smart Recommendations</h3>
+            {tipsLoading ? (
+              <div className="space-y-3"><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/></div>
+            ) : (
               <div className="space-y-3">
-                {emissions.slice(0, 5).map(e => (
-                  <div key={e.id} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
-                    <div><p className="text-sm font-bold text-white capitalize">{e.category}</p><p className="text-[10px] text-forest-500 font-medium uppercase mt-0.5">{fmtDate(e.date)}</p></div>
-                    <span className="text-sm font-black text-white bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">{formatCO2(e.co2eKg)}</span>
+                {tips?.map((t, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/8 transition-all group">
+                    <span className="text-3xl transition-transform group-hover:scale-110 duration-300">{t.icon}</span>
+                    <div><p className="text-sm font-bold text-white mb-1">{t.title || 'Tip'}</p><p className="text-xs text-forest-300 leading-relaxed font-medium">{t.desc}</p></div>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
-        )}
-
-        {activeTab === 'friends' && (
-          <div className="space-y-4">
-            <div className="card text-center p-5 border border-white/5 bg-gradient-to-br from-forest-800/20 to-transparent"><p className="text-[10px] text-forest-500 uppercase tracking-[0.2em] mb-2 font-bold">Your Friend Code</p><p className="text-3xl font-black text-white tracking-[0.3em] font-mono">{user?.friendCode || '—'}</p></div>
-            <div className="card p-4 border border-white/5 bg-white/2">
-              <h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4">Add Friend</h3>
-              <form onSubmit={handleAddFriend} className="flex gap-2">
-                <input value={friendCode} onChange={e => setFriendCode(e.target.value.toUpperCase())} placeholder="8-char code" maxLength={8} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-forest-500 font-mono tracking-widest placeholder:text-forest-700" />
-                <button type="submit" className="btn-primary text-[11px] px-5 font-bold uppercase tracking-wider shadow-lg shadow-forest-500/20">Add</button>
-              </form>
-              {friendMsg && <p className={clsx('text-[10px] mt-2 font-bold uppercase tracking-wide', friendMsg.includes('✅') ? 'text-forest-400' : 'text-red-400')}>{friendMsg}</p>}
-            </div>
-            <div className="space-y-3">
-              {friends.map(f => (
-                <div key={f.id} className="card p-4 flex items-center justify-between border border-white/5 bg-white/2 hover:bg-white/4 transition-all">
+          <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4">Recent Activity Logs</h3>
+            <div className="divide-y divide-white/5">
+              {emissions.slice(0, 6).map(e => (
+                <div key={e.id} className="flex justify-between items-center py-3.5 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-3">
-                    <div className="relative"><AvatarDisplay index={f.avatarIndex} size="md" /><span className={clsx('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-forest-900', onlineUsers[f.id] ? 'bg-green-400' : 'bg-forest-600')} /></div>
-                    <div><p className="text-sm font-bold text-white">{f.name}</p><p className="text-[10px] text-forest-500 font-bold uppercase mt-0.5">🔥 {f.streakDays}d · ⭐ {f.points}pts</p></div>
+                    <div className="w-10 h-10 bg-forest-500/10 rounded-xl flex items-center justify-center text-forest-500 font-bold capitalize">{e.category.charAt(0)}</div>
+                    <div><p className="text-sm font-bold text-white capitalize">{e.category}</p><p className="text-[10px] text-forest-600 font-bold uppercase mt-0.5 tracking-tighter">{fmtDate(e.date)}</p></div>
                   </div>
-                  <button onClick={() => setChatFriend(f)} className="relative bg-forest-500/10 hover:bg-forest-500/20 p-2.5 rounded-xl text-forest-300 transition-all active:scale-90 border border-white/5">
-                    <MessageCircle size={18} />
-                    {unreadCounts[f.id] > 0 && <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg ring-2 ring-forest-900">{unreadCounts[f.id]}</span>}
-                  </button>
+                  <span className="text-sm font-black text-white bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">{formatCO2(e.co2eKg)}</span>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'leaderboard' && <div className="card p-4 border border-white/5 bg-white/2"><h3 className="text-xs font-black text-forest-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Trophy size={14} className="text-amber-400" /> Global Ranking</h3><LeaderboardBar data={leaderboard} currentUserId={user?.id} /></div>}
-        
-        {activeTab === 'badges' && (
-          <div className="grid grid-cols-3 gap-3">
-            {badges.map(b => (
-              <div key={b.id} className={clsx('card text-center p-3 flex flex-col items-center justify-center border transition-all', b.earned ? 'grayscale-0 opacity-100 border-forest-400/40 bg-forest-500/10 shadow-lg' : 'grayscale opacity-30 border-white/5 bg-white/2')}>
-                <span className="text-2xl mb-1.5">{b.icon}</span><p className="text-[9px] font-black text-white uppercase leading-tight tracking-tighter">{b.name}</p>
+      {activeTab === 'challenges' && (
+        <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="flex items-center justify-between px-2 mb-2">
+            <p className="text-[10px] font-bold text-forest-600 uppercase tracking-widest">Active Weekly Tasks</p>
+            <RefreshCw size={12} className="text-forest-600" />
+          </div>
+          {challenges.map(c => (
+            <div key={c.id} className={clsx('p-5 rounded-[28px] border transition-all duration-500', c.completed ? 'bg-forest-500/10 border-forest-500/40' : 'bg-white/2 border-white/5')}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex gap-4">
+                  <div className="w-14 h-14 bg-black/20 rounded-2xl flex items-center justify-center text-3xl shadow-inner">{c.icon}</div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-white">{c.name}</p>
+                      {c.completed && <CheckCircle size={14} className="text-forest-400" />}
+                    </div>
+                    <p className="text-xs text-forest-400 mt-1 font-medium">{c.desc}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">+{c.points} pts</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] text-forest-500 font-black uppercase tracking-tighter">
+                  <span>Progress: {c.progress} / {c.target} {c.unit}</span>
+                  <span className={c.completed ? 'text-forest-400' : ''}>{c.pct}%</span>
+                </div>
+                <div className="h-2 bg-black/20 rounded-full overflow-hidden border border-white/5">
+                  <div className={clsx('h-full transition-all duration-1000', c.completed ? 'bg-forest-500' : 'bg-forest-300')} style={{ width: `${c.pct}%` }}/>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'friends' && (
+        <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="bg-white/2 p-6 rounded-[28px] border border-white/5 text-center shadow-xl">
+            <p className="text-[10px] text-forest-500 uppercase tracking-[0.3em] mb-3 font-black">Your Unique Code</p>
+            <p className="text-3xl font-black text-white tracking-[0.4em] font-mono select-all cursor-copy">{user?.friendCode}</p>
+          </div>
+          <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4">Connect with Friends</h3>
+            <form onSubmit={addFriend} className="flex gap-2">
+              <input 
+                value={friendCode} 
+                onChange={e => setFriendCode(e.target.value.toUpperCase())} 
+                placeholder="Paste 8-char code here" 
+                maxLength={8} 
+                className="flex-1 bg-forest-950/50 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-forest-500 transition-all placeholder:text-forest-800" 
+              />
+              <button type="submit" className="bg-forest-500 hover:bg-forest-400 text-white px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-forest-500/20 transition-all active:scale-95">Add</button>
+            </form>
+            {friendMsg && <p className={clsx("text-[10px] mt-3 font-black uppercase tracking-widest text-center", friendMsg.includes('✅') ? "text-forest-400" : "text-red-400")}>{friendMsg}</p>}
+          </div>
+          <div className="space-y-3">
+            {friends.map(f => (
+              <div key={f.id} className="bg-white/2 p-4 rounded-[24px] flex items-center justify-between border border-white/5 hover:bg-white/5 transition-all group shadow-md">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <AvatarDisplay index={f.avatarIndex} size="md" />
+                    {online[f.id] && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-forest-950 ring-2 ring-green-500/20"/>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-white">{f.name}</p>
+                    <p className="text-[10px] text-forest-500 font-bold uppercase mt-0.5 tracking-wider">🔥 {f.streakDays || 0}d · ⭐ {f.points}pts</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setChatFriend(f); setUnread(p => ({ ...p, [f.id]: 0 })); }} 
+                  className="relative bg-forest-500/10 hover:bg-forest-500/20 p-3 rounded-2xl text-forest-400 border border-white/5 transition-all active:scale-90"
+                >
+                  <MessageCircle size={20} />
+                  {unread[f.id] > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg ring-2 ring-forest-900 animate-bounce">{unread[f.id]}</span>}
+                </button>
               </div>
             ))}
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+
+      {activeTab === 'leaderboard' && (
+        <div className="bg-white/2 p-6 rounded-[32px] border border-white/5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest flex items-center gap-2"><Trophy size={16} className="text-amber-400" /> Global Ranking</h3>
+            <span className="text-[10px] font-bold text-forest-600 bg-white/5 px-3 py-1 rounded-full uppercase tracking-tighter">Live Updates</span>
+          </div>
+          <div className="space-y-2">
+            {leaderboard.map((l, i) => (
+              <div key={l.id} className={clsx('flex items-center gap-4 p-3.5 rounded-[20px] transition-all border border-transparent', l.id === user?.id ? 'bg-forest-500/15 border-forest-500/20 ring-1 ring-forest-500/10' : 'hover:bg-white/5')}>
+                <span className={clsx("text-xs font-black w-6 text-center", i === 0 ? "text-amber-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-400" : "text-forest-600")}>#{i+1}</span>
+                <AvatarDisplay index={l.avatarIndex} size="sm" />
+                <span className={clsx("text-sm font-bold flex-1 truncate", l.id === user?.id ? "text-white" : "text-forest-100")}>{l.name} {l.id === user?.id && <span className="text-[9px] bg-forest-500 text-white px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-tighter">You</span>}</span>
+                <div className="text-right">
+                  <p className="text-sm font-black text-white">{l.points}</p>
+                  <p className="text-[9px] text-forest-600 font-bold uppercase tracking-tighter">Points</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'badges' && (
+        <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {badges.map(b => (
+            <div 
+              key={b.id} 
+              className={clsx(
+                'p-5 rounded-[28px] border flex flex-col items-center justify-center transition-all duration-700 shadow-lg', 
+                b.earned ? 'bg-gradient-to-br from-forest-500/20 to-forest-500/5 border-forest-500/40 opacity-100 scale-100' : 'bg-white/2 border-white/5 opacity-30 grayscale scale-95'
+              )}
+            >
+              <div className="text-4xl mb-3 drop-shadow-lg">{b.icon}</div>
+              <p className="text-[10px] font-black text-white uppercase leading-tight tracking-tighter text-center">{b.name}</p>
+              <div className="mt-2 h-1 w-8 bg-white/10 rounded-full overflow-hidden">
+                {b.earned && <div className="h-full bg-forest-400 w-full animate-pulse"/>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
-
-const FALLBACK_TIPS_STATIC = [
-  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.', saving: 'Save ~200 kg/year' },
-  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.', saving: 'Save ~150 kg/year' },
-  { icon: '💡', title: 'Switch to LED lighting', desc: 'LEDs use 75% less energy than old bulbs.', saving: 'Save ~80 kg/year' },
-];
 
 const BADGE_MAP = {
   first_log:'🌱', week_streak:'🔥', month_streak:'⚡', ten_logs:'📊', fifty_logs:'🏆', below_avg:'🌍', offset_1t:'🌲', quiz_done:'📝', veg_week:'🥗', no_car:'🚶', century:'💯', friend_made:'🤝',
