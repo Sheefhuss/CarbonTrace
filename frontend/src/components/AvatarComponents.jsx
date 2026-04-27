@@ -99,7 +99,6 @@ export function AvatarButton({ av, index, selected, onSelect }) {
   const isSelected = selected === index;
 
   return (
-    // FIX: Added type="button" here to prevent form submission
     <button type="button" onClick={() => onSelect(index)} title={av.label}
       className={clsx(
         'flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all',
