@@ -25,12 +25,9 @@ export const useEmissions = () => {
     }
   }, [user?.id]);
 
-  // FIX: removed fetchEmissions() call from inside addEmission to avoid double-fetch.
-  // The modal calls refetch() itself after a successful add.
   const addEmission = async (activityData) => {
     try {
       const res = await axios.post('/api/emissions', activityData);
-      // FIX: return full server data so modal can display actual pointsEarned
       return { ok: true, data: res.data };
     } catch (err) {
       const message =
@@ -43,7 +40,6 @@ export const useEmissions = () => {
 
   const runQuiz = async (answers) => {
     try {
-      // Ensure all numeric fields are actually numbers before sending
       const payload = Object.fromEntries(
         Object.entries(answers).map(([k, v]) => [k, isNaN(v) ? v : Number(v)])
       );
