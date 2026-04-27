@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-forest-950 via-forest-900 to-forest-800">
-      {/* FIX: pass refetch so modal triggers a refresh of THIS instance */}
+      {/*  */}
       {showLogModal && (
         <LogActivityModal
           onClose={() => setShowLogModal(false)}
@@ -36,8 +36,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* FIX: pass emissions + refetch as props so IndividualDashboard
-            uses the same data instance instead of creating its own */}
+        {/* */}
         <IndividualDashboard
           setShowLogModal={setShowLogModal}
           emissions={emissions}
