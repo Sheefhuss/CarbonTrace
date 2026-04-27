@@ -1,7 +1,3 @@
-// FILE: backend/models/ScopeReport.js
-// FIX: Removed duplicate scope1/scope2/scope3 columns (were duplicates of scope1Emissions etc.)
-// Now uses scope1Emissions, scope2Emissions, scope3Emissions consistently everywhere.
-
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -28,7 +24,6 @@ module.exports = (sequelize) => {
     periodEnd: {
       type: DataTypes.DATEONLY,
     },
-    // FIX: removed duplicate scope1/scope2/scope3 — use only these:
     scope1Emissions: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
