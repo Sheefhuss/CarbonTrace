@@ -90,7 +90,6 @@ export const useScopeReports = () => {
   return { reports, loading, createReport };
 };
 
-// ── Static fallback tips — shown when Gemini quota exceeded ─────────────────
 const FALLBACK_TIPS = [
   { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km to significantly cut fuel emissions.', saving: 'Save ~200 kg/year' },
   { icon: '🥗', title: 'Try meat-free days',     desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.', saving: 'Save ~150 kg/year' },
