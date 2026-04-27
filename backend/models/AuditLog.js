@@ -18,7 +18,7 @@ module.exports = (sequelize) => {
       type: DataTypes.UUID,
     },
     metadata: {
-      type: DataTypes.JSONB, // Stores extra JSON data
+      type: DataTypes.JSONB, 
     },
     ipAddress: {
       type: DataTypes.STRING,
