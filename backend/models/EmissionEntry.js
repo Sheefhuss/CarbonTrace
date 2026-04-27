@@ -12,9 +12,8 @@ module.exports = (sequelize) => sequelize.define('EmissionEntry', {
   },
   activityId: {
     type: DataTypes.UUID,
-    allowNull: true, // null = custom entry
+    allowNull: true,
   },
-  // Classification
   category: {
     type: DataTypes.ENUM('housing', 'transport', 'food', 'shopping', 'industrial', 'other'),
     allowNull: false,
@@ -23,12 +22,6 @@ module.exports = (sequelize) => sequelize.define('EmissionEntry', {
     type: DataTypes.STRING,
     comment: 'e.g. "electricity", "petrol_car", "beef", "flight_economy"',
   },
-  // B2B Scope
-  scope: {
-    type: DataTypes.ENUM('scope1', 'scope2', 'scope3'),
-    allowNull: true, // only for business users
-  },
-  // Measurement
   quantity: {
     type: DataTypes.FLOAT,
     allowNull: false,
@@ -49,7 +42,6 @@ module.exports = (sequelize) => sequelize.define('EmissionEntry', {
     allowNull: false,
     comment: 'Total kg CO2 equivalent = quantity * emissionFactor',
   },
-  // Metadata
   date: {
     type: DataTypes.DATEONLY,
     allowNull: false,
@@ -60,7 +52,6 @@ module.exports = (sequelize) => sequelize.define('EmissionEntry', {
     type: DataTypes.ENUM('manual', 'api', 'import', 'quiz'),
     defaultValue: 'manual',
   },
-  // For audit compliance
   verifiedAt: { type: DataTypes.DATE },
   verifiedBy: { type: DataTypes.UUID },
 }, {
