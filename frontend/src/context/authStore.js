@@ -6,7 +6,7 @@ const useAuthStore = create((set, get) => ({
   user: null,
   token: localStorage.getItem('token') || null,
   isLoading: false,
-  isInitializing: true, // FIX: starts true, set to false after initialize() completes
+  isInitializing: true, 
 
   initialize: async () => {
     const token = localStorage.getItem('token');
