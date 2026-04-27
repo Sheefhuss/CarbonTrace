@@ -48,8 +48,6 @@ const CO2_LEVELS = [
 
 const getCO2Level = (kg) => CO2_LEVELS.find(l => kg <= l.max) || CO2_LEVELS[CO2_LEVELS.length - 1];
 
-// FIX: accepts onSaved prop from DashboardPage — called after successful save
-// so DashboardPage's useEmissions instance refetches and UI updates immediately.
 export default function LogActivityModal({ onClose, onSaved }) {
   const [activeTab, setActiveTab] = useState('transport');
   const [selected, setSelected] = useState(ACTIVITIES.transport.options[0]);
@@ -57,7 +55,6 @@ export default function LogActivityModal({ onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
 
-  // Only used for addEmission — NOT for refetch (that comes via onSaved prop)
   const { addEmission } = useEmissions();
   const tab = ACTIVITIES[activeTab];
 
@@ -93,8 +90,6 @@ export default function LogActivityModal({ onClose, onSaved }) {
     });
     setLoading(false);
     if (result.ok) {
-      // FIX: call onSaved() to trigger refetch in DashboardPage's useEmissions instance
-      // This is what actually updates the dashboard data in real time
       if (onSaved) await onSaved();
 
       const pointsEarned = result.data?.pointsEarned ?? 2;
