@@ -4,7 +4,6 @@ import clsx from 'clsx';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-// ── Build a dynamic system prompt with live user data every send ─────────────
 const buildSystemPrompt = (user, dashboardData) => {
   const firstName = user?.name?.split(' ')[0] || 'the user';
   const monthlyKg = dashboardData?.monthlyKg ?? 0;
@@ -64,10 +63,8 @@ const FALLBACK_RESPONSES = [
 ];
 let fallbackIndex = 0;
 
-// ── Main component ────────────────────────────────────────────────────────────
 export default function CarbonBot({ user, emissions = [] }) {
 
-  // Compute dashboard context from emissions array
   const dashboardData = useMemo(() => {
     if (!emissions.length) return { monthlyKg: 0, topCategory: null, totalLogs: 0 };
     const now = new Date();
@@ -82,7 +79,6 @@ export default function CarbonBot({ user, emissions = [] }) {
 
   const firstName = user?.name?.split(' ')[0] || null;
 
-  // Dynamic greeting based on real user data
   const greeting = useMemo(() => {
     if (!firstName) {
       return "Hi! I'm CarbonBot 🌿 Ask me anything about your carbon footprint, how to earn points, or climate tips!";
@@ -98,7 +94,6 @@ export default function CarbonBot({ user, emissions = [] }) {
     return `Hi ${firstName}! 🌿 You've logged ${Math.round(monthlyKg)} kg CO₂e this month. I'm CarbonBot — ask me about your footprint, challenges, or earning more points!`;
   }, [firstName, dashboardData.monthlyKg, user?.streakDays]);
 
-  // Dynamic floating hints
   const floatingHints = useMemo(() => {
     const hints = [];
     if (firstName) hints.push(`Need help, ${firstName}? 🌿`);
@@ -109,8 +104,6 @@ export default function CarbonBot({ user, emissions = [] }) {
     hints.push('Which activity saves most CO₂? 🤔');
     return hints;
   }, [firstName, dashboardData.monthlyKg, user?.streakDays, user?.earnedBadges?.length]);
-
-  // Context-aware quick suggestions
   const quickSuggestions = useMemo(() => {
     if (!dashboardData.monthlyKg) {
       return ['What should I log first? 🌱', 'How do I earn points? ⭐', 'What is the Paris target? 🌍', 'Which food saves most CO₂?'];
@@ -123,8 +116,7 @@ export default function CarbonBot({ user, emissions = [] }) {
     }
     return ['How to complete challenges? 🏆', 'Which activity saves most CO₂?', 'How do I earn more points? ⭐', 'What is the Paris target? 🌍'];
   }, [dashboardData.monthlyKg, dashboardData.topCategory]);
-
-  // State
+  
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([{ role: 'assistant', content: greeting }]);
   const [input, setInput] = useState('');
@@ -136,12 +128,10 @@ export default function CarbonBot({ user, emissions = [] }) {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Re-greet when user logs in or emissions load for first time
   useEffect(() => {
     setMessages([{ role: 'assistant', content: greeting }]);
   }, [greeting]);
 
-  // Hint bubble lifecycle
   useEffect(() => {
     if (open) return;
     const t = setTimeout(() => setHintVisible(true), 2500);
@@ -236,7 +226,7 @@ export default function CarbonBot({ user, emissions = [] }) {
 
   return (
     <>
-      {/* ── Floating button + hint bubble ──────────────────────────────────── */}
+      {/*  */}
       {!open && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
 
@@ -276,7 +266,7 @@ export default function CarbonBot({ user, emissions = [] }) {
         </div>
       )}
 
-      {/* ── Chat window ──────────────────────────────────────────────────────── */}
+      {/*  */}
       {open && (
         <div className={clsx(
           'fixed z-50 bg-forest-900 border border-white/10 shadow-2xl shadow-black/40 flex flex-col transition-all duration-300',
@@ -318,7 +308,7 @@ export default function CarbonBot({ user, emissions = [] }) {
             </div>
           </div>
 
-          {/* Mini stats panel — only shown when user has data */}
+          {/* */}
           {!minimised && user && dashboardData.monthlyKg > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-white/3 shrink-0">
               <div className="flex-1 text-center">
