@@ -9,10 +9,10 @@ const ACTIVITIES = {
     label: 'Transport',
     icon: '🚗',
     options: [
-      { value: 'Personal Car (Gasoline)', label: 'Petrol / CNG Car',  emoji: '🚗', unit: 'km',       factor: 0.192, hint: 'km driven today'  },
+      { value: 'Personal Car (Gasoline)', label: 'Petrol / CNG Car',  emoji: '🚗', unit: 'km',       factor: 0.170, hint: 'km driven today'  },
       { value: 'Personal Car (EV)',       label: 'Electric Vehicle',   emoji: '⚡', unit: 'km',       factor: 0.053, hint: 'km driven today'  },
       { value: 'Bus / Public Transit',    label: 'Bus / Metro / Auto', emoji: '🚌', unit: 'km',       factor: 0.105, hint: 'km travelled'      },
-      { value: 'Flight (Domestic)',       label: 'Domestic Flight',    emoji: '✈️', unit: 'km',       factor: 0.255, hint: 'one-way distance'  },
+      { value: 'Flight (Domestic)',       label: 'Domestic Flight',    emoji: '✈️', unit: 'km',       factor: 0.246, hint: 'one-way distance'  },
       { value: 'Bicycle / Walk',          label: 'Bicycle / Walking',  emoji: '🚲', unit: 'km',       factor: 0,     hint: 'zero emissions!'   },
     ],
   },
