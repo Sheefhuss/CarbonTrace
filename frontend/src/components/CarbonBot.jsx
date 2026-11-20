@@ -36,9 +36,9 @@ Badges earned: ${badges}
 ═══════════════════════════════════════════════════════════════════
 
 CarbonTrace emission factors (use exact numbers):
-Transport: Petrol car 0.192 kg/km, EV 0.053 kg/km, Bus/Metro 0.105 kg/km, Flight 0.255 kg/km, Bicycle 0 kg/km
+Transport: Petrol car 0.17 kg/km, EV 0.053 kg/km, Bus/Metro 0.105 kg/km, Flight 0.246 kg/km, Bicycle 0 kg/km
 Food: Chicken/Fish 1.5 kg/serving, Paneer/Dairy 2.0 kg, Dal/Rice 1.2 kg, Street food 1.0 kg, Vegan 0.8 kg
-Shopping: Clothing 0.5 kg/USD, Electronics 1.2 kg/USD, Furniture 0.8 kg/USD
+Shopping: Clothing 0.5 kg/USD (~₹92.5), Electronics 1.2 kg/USD (~₹92.5), Furniture 0.8 kg/USD (~₹92.5)
 India electricity: 0.82 kg CO₂ per kWh
 Points: +2 per log, +5 low-carbon bonus (<2 kg), +5 daily login, +10 registration
 Paris target: 208 kg/month; India avg: 150 kg/month; World avg: 400 kg/month
@@ -182,12 +182,12 @@ export default function CarbonBot({ user, emissions = [] }) {
           'Authorization': `Bearer ${GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [
             { role: 'system', content: systemPrompt },
             ...updatedMessages.slice(-8),
           ],
-          max_tokens: 350,
+          max_tokens: 1024,
           temperature: 0.6,
         }),
       });
