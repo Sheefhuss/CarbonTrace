@@ -146,9 +146,9 @@ const parseTipsJson = (rawText) => {
 
 const callGroqTips = async (prompt) => {
   const keys = [
-    import.meta.env.VITE_GROQ_API_KEY,
     import.meta.env.VITE_GROQ_API_KEY_2,
     import.meta.env.VITE_GROQ_API_KEY_3,
+    import.meta.env.VITE_GROQ_API_KEY,
   ].filter(Boolean);
 
   if (keys.length === 0) {
