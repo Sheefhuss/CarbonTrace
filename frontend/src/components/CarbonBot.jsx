@@ -1,23 +1,19 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Send, Minimize2 } from 'lucide-react';
 import clsx from 'clsx';
-
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+import axios from 'axios';
+import { COUNTRY_AVERAGES } from '../utils/helpers';
 
 const buildSystemPrompt = (user, dashboardData) => {
   const firstName = user?.name?.split(' ')[0] || 'the user';
   const monthlyKg = dashboardData?.monthlyKg ?? 0;
-  const streak = 5;
+  const streak = user?.streakDays ?? 0;
   const points = user?.points ?? 0;
   const badges = (user?.earnedBadges ?? []).join(', ') || 'none yet';
   const topCat = dashboardData?.topCategory || 'nothing logged yet';
   const totalLogs = dashboardData?.totalLogs ?? 0;
   const country = user?.country || 'IND';
-  const countryAvgMap = {
-    IND: 150, USA: 1500, GBR: 750, DEU: 870, FRA: 600,
-    AUS: 1400, CAN: 1380, BRA: 220, CHN: 580, WORLD: 400,
-  };
-  const countryAvg = countryAvgMap[country] || 400;
+  const countryAvg = COUNTRY_AVERAGES[country]?.kgPerMonth || 400;
   const vsAvg = monthlyKg > 0
     ? monthlyKg < countryAvg
       ? `${Math.round(((countryAvg - monthlyKg) / countryAvg) * 100)}% BELOW country average — celebrate this`
@@ -41,7 +37,7 @@ Food: Chicken/Fish 1.5 kg/serving, Paneer/Dairy 2.0 kg, Dal/Rice 1.2 kg, Street 
 Shopping: Clothing 0.5 kg/USD (~₹92.5), Electronics 1.2 kg/USD (~₹92.5), Furniture 0.8 kg/USD (~₹92.5)
 India electricity: 0.82 kg CO₂ per kWh
 Points: +2 per log, +5 low-carbon bonus (<2 kg), +5 daily login, +10 registration
-Paris target: 208 kg/month; India avg: 150 kg/month; World avg: 400 kg/month
+Paris target: 208 kg/month; ${country} avg: ${countryAvg} kg/month; World avg: 400 kg/month
 Challenges: No-Meat Week +60, Green Commute +50, 5-Day Logger +40, Light Footprint +80, Cycle Hero +45, Plant Power +35, Zero Waste Week +55, Solar Saver +70
 
 Your rules:
@@ -55,7 +51,7 @@ Your rules:
 };
 
 const FALLBACK_RESPONSES = [
-  "🚲 Cycling instead of driving 5 km/day saves ~350 kg CO₂/year — that's 175 points in CarbonTrace! Log it under Transport → Bicycle/Walk to earn your Cycle Hero challenge.",
+  "🚲 Cycling instead of driving 5 km/day saves ~310 kg CO₂/year (5 × 365 × 0.17). Log it under Transport → Bicycle/Walk to earn your Cycle Hero challenge.",
   "🥗 Switching one chicken meal to plant-based saves ~0.7 kg CO₂. Log 7 plant-based meals this week to complete No-Meat Week for +60 pts!",
   "📊 The Paris 2030 target is 208 kg CO₂/month per person. Log activities daily to see exactly how you compare.",
   "⚡ India's grid emits 0.82 kg CO₂ per kWh — one of the world's highest. Energy-efficient appliances and solar panels make a measurable difference.",
@@ -68,7 +64,7 @@ export default function CarbonBot({ user, emissions = [] }) {
   const dashboardData = useMemo(() => {
     if (!emissions.length) return { monthlyKg: 0, topCategory: null, totalLogs: 0 };
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     const monthly = emissions.filter(e => e.date >= startOfMonth);
     const monthlyKg = monthly.reduce((s, e) => s + parseFloat(e.co2eKg || 0), 0);
     const byCat = {};
@@ -84,7 +80,7 @@ export default function CarbonBot({ user, emissions = [] }) {
       return "Hi! I'm CarbonBot 🌿 Ask me anything about your carbon footprint, how to earn points, or climate tips!";
     }
     const { monthlyKg } = dashboardData;
-    const streak = 5;
+    const streak = user?.streakDays ?? 0;
     if (monthlyKg === 0) {
       return `Hi ${firstName}! 🌿 I'm CarbonBot, your personal carbon assistant. You haven't logged anything this month yet — want me to suggest where to start?`;
     }
@@ -92,18 +88,18 @@ export default function CarbonBot({ user, emissions = [] }) {
       return `Hey ${firstName}! 🔥 ${streak}-day streak — impressive! You've logged ${Math.round(monthlyKg)} kg CO₂e this month. Ask me how to reduce it or earn more badges!`;
     }
     return `Hi ${firstName}! 🌿 You've logged ${Math.round(monthlyKg)} kg CO₂e this month. I'm CarbonBot — ask me about your footprint, challenges, or earning more points!`;
-  }, [firstName, dashboardData.monthlyKg]);
+  }, [firstName, dashboardData.monthlyKg, user?.streakDays]);
 
   const floatingHints = useMemo(() => {
     const hints = [];
     if (firstName) hints.push(`Need help, ${firstName}? 🌿`);
     else hints.push('Need help reducing your footprint? 🌿');
     if (dashboardData.monthlyKg > 0) hints.push(`${Math.round(dashboardData.monthlyKg)} kg logged this month 📊`);
-    hints.push('5-day streak! Keep it up 🔥');
+    if ((user?.streakDays ?? 0) > 0) hints.push(`${user.streakDays}-day streak! Keep it up 🔥`);
     if (!(user?.earnedBadges?.length)) hints.push('Earn your first badge! Ask me how ⭐');
     hints.push('Which activity saves most CO₂? 🤔');
     return hints;
-  }, [firstName, dashboardData.monthlyKg, user?.earnedBadges?.length]);
+  }, [firstName, dashboardData.monthlyKg, user?.earnedBadges?.length, user?.streakDays]);
   const quickSuggestions = useMemo(() => {
     if (!dashboardData.monthlyKg) {
       return ['What should I log first? 🌱', 'How do I earn points? ⭐', 'What is the Paris target? 🌍', 'Which food saves most CO₂?'];
@@ -129,7 +125,7 @@ export default function CarbonBot({ user, emissions = [] }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    setMessages([{ role: 'assistant', content: greeting }]);
+    setMessages(m => (m.length <= 1 ? [{ role: 'assistant', content: greeting }] : m));
   }, [greeting]);
 
   useEffect(() => {
@@ -171,38 +167,21 @@ export default function CarbonBot({ user, emissions = [] }) {
     setLoading(true);
 
     try {
-      if (!GROQ_API_KEY) throw new Error('NO_KEY');
-
       const systemPrompt = buildSystemPrompt(user, dashboardData);
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...updatedMessages.slice(-8),
-          ],
-          max_tokens: 1024,
-          temperature: 0.6,
-        }),
+      const res = await axios.post('/api/ai/chat', {
+        system: systemPrompt,
+        messages: updatedMessages.slice(-8),
       });
-
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-      const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content ||
-        FALLBACK_RESPONSES[fallbackIndex++ % FALLBACK_RESPONSES.length];
+      const reply = res.data?.reply;
+      if (!reply) throw new Error('EMPTY_REPLY');
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       if (!open) setUnread(u => u + 1);
 
     } catch {
       const reply = FALLBACK_RESPONSES[fallbackIndex++ % FALLBACK_RESPONSES.length];
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, fallback: true }]);
     } finally {
       setLoading(false);
     }
@@ -290,7 +269,7 @@ export default function CarbonBot({ user, emissions = [] }) {
                 )}
               </div>
               <p className="text-xs text-forest-400">
-                {GROQ_API_KEY ? '⚡ Groq AI · knows your data' : 'Offline · Add VITE_GROQ_API_KEY'}
+                ⚡ AI assistant · knows your data
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -314,7 +293,7 @@ export default function CarbonBot({ user, emissions = [] }) {
               <div className="w-px h-6 bg-white/10" />
               <div className="flex-1 text-center">
                 <p className="text-[10px] text-forest-500 leading-none mb-0.5">Streak</p>
-                <p className="text-sm font-bold text-white">🔥 5d</p>
+                <p className="text-sm font-bold text-white">🔥 {user?.streakDays ?? 0}d</p>
               </div>
               <div className="w-px h-6 bg-white/10" />
               <div className="flex-1 text-center">
@@ -351,6 +330,7 @@ export default function CarbonBot({ user, emissions = [] }) {
                         : 'bg-white/8 text-forest-100 border border-white/5 rounded-tl-sm'
                     )}>
                       {msg.content}
+                      {msg.fallback && <span className="block text-[10px] text-forest-500 mt-1">(offline answer)</span>}
                     </div>
                   </div>
                 ))}
@@ -407,7 +387,7 @@ export default function CarbonBot({ user, emissions = [] }) {
                   </button>
                 </div>
                 <p className="text-xs text-forest-600 text-center mt-1.5">
-                  {GROQ_API_KEY ? '⚡ Groq AI · personalised to your data' : 'Add VITE_GROQ_API_KEY to .env to enable AI'}
+                  ⚡ AI assistant · personalised to your data
                 </p>
               </div>
             </>
