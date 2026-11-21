@@ -107,19 +107,16 @@ const FALLBACK_TIPS = [
     icon: '🚗',
     title: 'Reduce short car trips',
     desc: 'Walk or cycle for trips under 2 km to significantly cut fuel emissions.',
-    saving: 'Save ~200 kg/year',
   },
   {
     icon: '🥗',
     title: 'Try meat-free days',
     desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.',
-    saving: 'Save ~150 kg/year',
   },
   {
     icon: '💡',
     title: 'Switch to LED lighting',
     desc: 'LED bulbs use 75% less energy than old bulbs — easy swap, big impact.',
-    saving: 'Save ~80 kg/year',
   },
 ];
 
@@ -140,7 +137,7 @@ const parseTipsJson = (rawText) => {
     icon: item?.icon || FALLBACK_TIPS[idx]?.icon || '🌿',
     title: String(item?.title || FALLBACK_TIPS[idx]?.title || 'Eco Tip'),
     desc: String(item?.desc || FALLBACK_TIPS[idx]?.desc || ''),
-    saving: String(item?.saving || FALLBACK_TIPS[idx]?.saving || 'Save ~100 kg/year'),
+    saving: item?.saving ? String(item.saving) : '',
   }));
 };
 
@@ -208,9 +205,8 @@ export const useAITips = (emissions, user, userLocation = null) => {
     try {
       // 3) one request per key at a time
       if (!inflight.has(cacheKey)) {
-        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          .toISOString()
-          .split('T')[0];
+        const n = new Date();   // local date: toISOString() shifts to the previous day in IST
+        const startOfMonth = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-01`;
 
         const totals = {};
         emissions
@@ -256,6 +252,7 @@ export const useAITips = (emissions, user, userLocation = null) => {
     } finally {
       setLoading(false);
     }
+    // hasData (boolean), not emissions.length: logging a new activity must not re-trigger this
   }, [hasData, cacheKey, user?.country, user?.streakDays, userLocation?.city, userLocation?.state]);
 
   useEffect(() => {
