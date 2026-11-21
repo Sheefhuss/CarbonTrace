@@ -30,7 +30,11 @@ const callGroq = async (payload) => {
   throw err;
 };
 
-const limiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20 });
+const limiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => String(req.user?.id || req.ip),
+});
 
 router.post('/tips', authenticate, limiter, async (req, res) => {
   const { totalKg = 0, topSources = [], streakDays = 0, city, state, country = 'India' } = req.body || {};
