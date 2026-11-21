@@ -207,7 +207,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
   const [chatFriend, setChatFriend] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-  const { tips, loading: tipsLoading } = useAITips(emissions, user);
+  const { tips, loading: tipsLoading, error: tipsError } = useAITips(emissions, user);
   const badges = computeBadges(user, emissions);
   const weekKey = getCurrentWeekKey();
 
@@ -252,7 +252,11 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     groupedActivities.push({ type: 'act', data: e });
   });
 
-  const categoryTotals = emissions.reduce((acc, e) => {
+  const _n = new Date();
+  const startOfMonth = `${_n.getFullYear()}-${String(_n.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthEmissions = emissions.filter(e => (e.date || '') >= startOfMonth);
+
+  const categoryTotals = monthEmissions.reduce((acc, e) => {
     const key = (e.category || 'other').toLowerCase();
     acc[key] = (acc[key] || 0) + (parseFloat(e.co2eKg) || 0);
     return acc;
@@ -268,7 +272,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
   const donutTotalKg = donutSegments.reduce((s, d) => s + d.kg, 0);
 
-  const monthlyKg = emissions.filter(e => new Date(e.date).getMonth() === new Date().getMonth()).reduce((s, e) => s + parseFloat(e.co2eKg), 0);
+  const monthlyKg = monthEmissions.reduce((s, e) => s + (parseFloat(e.co2eKg) || 0), 0);
   const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
 
   const displayTips = tips && tips.length > 0 ? tips : FALLBACK_TIPS_STATIC;
@@ -287,7 +291,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight">Hi, {user?.name?.split(' ')[0]} 👋</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 5d Streak</span>
+              <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 {user?.streakDays ?? 0}d Streak</span>
               <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">⭐ {user?.points || 0} Points</span>
             </div>
           </div>
@@ -338,11 +342,11 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
                   <Lightbulb size={14} /> Smart Recommendations
                 </h3>
                 <p className="text-[10px] text-forest-400 font-semibold mt-0.5">
-                  AI-generated · Groq personalized insights
+                  {tipsError ? 'Default tips (AI unavailable)' : 'AI-generated · personalized insights'}
                 </p>
               </div>
               <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-forest-500/15 text-forest-300 border border-forest-500/30">
-                AI-generated
+                {tipsError ? 'Default' : 'AI-generated'}
               </span>
             </div>
             {tipsLoading ? (
@@ -515,9 +519,9 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 }
 
 const FALLBACK_TIPS_STATIC = [
-  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km to significantly cut fuel emissions.', saving: 'Save ~200 kg/year' },
-  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.', saving: 'Save ~150 kg/year' },
-  { icon: '💡', title: 'Switch to LED lighting', desc: 'LED bulbs use 75% less energy than old bulbs — easy swap, big impact.', saving: 'Save ~80 kg/year' },
+  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km to significantly cut fuel emissions.' },
+  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.' },
+  { icon: '💡', title: 'Switch to LED lighting', desc: 'LED bulbs use 75% less energy than old bulbs — easy swap, big impact.' },
 ];
 
 const BADGE_MAP = {
