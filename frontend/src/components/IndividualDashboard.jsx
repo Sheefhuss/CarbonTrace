@@ -8,6 +8,82 @@ import axios from 'axios';
 import clsx from 'clsx';
 import socket from '../socket';
 
+const DONUT_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#a855f7', '#ec4899'];
+
+function CategoryDonutCard({ segments, totalKg }) {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  let cumulativeOffset = 0;
+
+  return (
+    <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
+      <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4">
+        Emissions Breakdown
+      </h3>
+      {totalKg <= 0 ? (
+        <p className="text-xs text-forest-500 text-center py-8">No emission data to display yet.</p>
+      ) : (
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="relative w-36 h-36 shrink-0">
+            <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
+              <circle
+                cx="70"
+                cy="70"
+                r={radius}
+                fill="transparent"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="16"
+              />
+              {segments.map((seg, idx) => {
+                const fraction = seg.kg / totalKg;
+                const dashLength = fraction * circumference;
+                const dashOffset = -cumulativeOffset;
+                cumulativeOffset += dashLength;
+                return (
+                  <circle
+                    key={seg.label}
+                    cx="70"
+                    cy="70"
+                    r={radius}
+                    fill="transparent"
+                    stroke={DONUT_COLORS[idx % DONUT_COLORS.length]}
+                    strokeWidth="16"
+                    strokeDasharray={`${dashLength} ${circumference}`}
+                    strokeDashoffset={dashOffset}
+                  />
+                );
+              })}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+              <span className="text-[10px] uppercase tracking-widest text-forest-500 font-black">Total</span>
+              <span className="text-sm font-black text-white">{formatCO2(totalKg)}</span>
+            </div>
+          </div>
+          <div className="flex-1 w-full space-y-2.5">
+            {segments.map((seg, idx) => {
+              const pct = Math.round((seg.kg / totalKg) * 100);
+              return (
+                <div key={seg.label} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
+                    />
+                    <span className="font-bold text-white">{seg.label}</span>
+                  </div>
+                  <span className="font-black text-forest-300">
+                    {pct}% <span className="text-forest-500 font-bold">({formatCO2(seg.kg)})</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getDateLabel(dateStr) {
   const today = new Date();
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
@@ -166,7 +242,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     const pct = Math.min(Math.round((progress / c.target) * 100), 100);
     const completed = user?.completedChallenges?.includes(`${c.id}_${weekKey}`) || pct >= 100;
     return { ...c, progress, pct, completed };
-});
+  });
 
   const groupedActivities = [];
   let lastActLabel = null;
@@ -175,6 +251,22 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
     if (l !== lastActLabel) { groupedActivities.push({ type: 'sep', label: l }); lastActLabel = l; }
     groupedActivities.push({ type: 'act', data: e });
   });
+
+  const categoryTotals = emissions.reduce((acc, e) => {
+    const key = (e.category || 'other').toLowerCase();
+    acc[key] = (acc[key] || 0) + (parseFloat(e.co2eKg) || 0);
+    return acc;
+  }, {});
+
+  const donutSegments = Object.entries(categoryTotals)
+    .map(([cat, kg]) => ({
+      label: cat.charAt(0).toUpperCase() + cat.slice(1),
+      kg,
+    }))
+    .filter(d => d.kg > 0)
+    .sort((a, b) => b.kg - a.kg);
+
+  const donutTotalKg = donutSegments.reduce((s, d) => s + d.kg, 0);
 
   const monthlyKg = emissions.filter(e => new Date(e.date).getMonth() === new Date().getMonth()).reduce((s, e) => s + parseFloat(e.co2eKg), 0);
   const countryAvg = COUNTRY_AVERAGES[user?.country || 'WORLD']?.kgPerMonth || 400;
@@ -195,7 +287,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight">Hi, {user?.name?.split(' ')[0]} 👋</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 {user?.streakDays || 0}d Streak</span>
+              <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">🔥 5d Streak</span>
               <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">⭐ {user?.points || 0} Points</span>
             </div>
           </div>
@@ -238,6 +330,7 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 
       {activeTab === 'overview' && (
         <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <CategoryDonutCard segments={donutSegments} totalKg={donutTotalKg} />
           <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
             <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Lightbulb size={14} /> Smart Recommendations</h3>
             {tipsLoading ? (
