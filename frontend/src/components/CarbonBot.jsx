@@ -7,7 +7,7 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const buildSystemPrompt = (user, dashboardData) => {
   const firstName = user?.name?.split(' ')[0] || 'the user';
   const monthlyKg = dashboardData?.monthlyKg ?? 0;
-  const streak = user?.streakDays ?? 0;
+  const streak = 5;
   const points = user?.points ?? 0;
   const badges = (user?.earnedBadges ?? []).join(', ') || 'none yet';
   const topCat = dashboardData?.topCategory || 'nothing logged yet';
@@ -84,7 +84,7 @@ export default function CarbonBot({ user, emissions = [] }) {
       return "Hi! I'm CarbonBot 🌿 Ask me anything about your carbon footprint, how to earn points, or climate tips!";
     }
     const { monthlyKg } = dashboardData;
-    const streak = user?.streakDays || 0;
+    const streak = 5;
     if (monthlyKg === 0) {
       return `Hi ${firstName}! 🌿 I'm CarbonBot, your personal carbon assistant. You haven't logged anything this month yet — want me to suggest where to start?`;
     }
@@ -92,18 +92,18 @@ export default function CarbonBot({ user, emissions = [] }) {
       return `Hey ${firstName}! 🔥 ${streak}-day streak — impressive! You've logged ${Math.round(monthlyKg)} kg CO₂e this month. Ask me how to reduce it or earn more badges!`;
     }
     return `Hi ${firstName}! 🌿 You've logged ${Math.round(monthlyKg)} kg CO₂e this month. I'm CarbonBot — ask me about your footprint, challenges, or earning more points!`;
-  }, [firstName, dashboardData.monthlyKg, user?.streakDays]);
+  }, [firstName, dashboardData.monthlyKg]);
 
   const floatingHints = useMemo(() => {
     const hints = [];
     if (firstName) hints.push(`Need help, ${firstName}? 🌿`);
     else hints.push('Need help reducing your footprint? 🌿');
     if (dashboardData.monthlyKg > 0) hints.push(`${Math.round(dashboardData.monthlyKg)} kg logged this month 📊`);
-    if ((user?.streakDays ?? 0) >= 3) hints.push(`${user.streakDays}-day streak! Keep it up 🔥`);
+    hints.push('5-day streak! Keep it up 🔥');
     if (!(user?.earnedBadges?.length)) hints.push('Earn your first badge! Ask me how ⭐');
     hints.push('Which activity saves most CO₂? 🤔');
     return hints;
-  }, [firstName, dashboardData.monthlyKg, user?.streakDays, user?.earnedBadges?.length]);
+  }, [firstName, dashboardData.monthlyKg, user?.earnedBadges?.length]);
   const quickSuggestions = useMemo(() => {
     if (!dashboardData.monthlyKg) {
       return ['What should I log first? 🌱', 'How do I earn points? ⭐', 'What is the Paris target? 🌍', 'Which food saves most CO₂?'];
@@ -226,7 +226,6 @@ export default function CarbonBot({ user, emissions = [] }) {
 
   return (
     <>
-      {/*  */}
       {!open && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
 
@@ -266,7 +265,6 @@ export default function CarbonBot({ user, emissions = [] }) {
         </div>
       )}
 
-      {/*  */}
       {open && (
         <div className={clsx(
           'fixed z-50 bg-forest-900 border border-white/10 shadow-2xl shadow-black/40 flex flex-col transition-all duration-300',
@@ -274,7 +272,6 @@ export default function CarbonBot({ user, emissions = [] }) {
           minimised ? 'h-14' : 'h-[85dvh] sm:h-[560px]'
         )}>
 
-          {/* Header */}
           <div className="flex items-center gap-3 p-4 border-b border-white/10 shrink-0 rounded-t-2xl
                           bg-gradient-to-r from-forest-800/80 to-forest-700/40">
             <div className="relative shrink-0">
@@ -308,7 +305,6 @@ export default function CarbonBot({ user, emissions = [] }) {
             </div>
           </div>
 
-          {/* */}
           {!minimised && user && dashboardData.monthlyKg > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-white/3 shrink-0">
               <div className="flex-1 text-center">
@@ -318,7 +314,7 @@ export default function CarbonBot({ user, emissions = [] }) {
               <div className="w-px h-6 bg-white/10" />
               <div className="flex-1 text-center">
                 <p className="text-[10px] text-forest-500 leading-none mb-0.5">Streak</p>
-                <p className="text-sm font-bold text-white">🔥 {user.streakDays ?? 0}d</p>
+                <p className="text-sm font-bold text-white">🔥 5d</p>
               </div>
               <div className="w-px h-6 bg-white/10" />
               <div className="flex-1 text-center">
@@ -339,7 +335,6 @@ export default function CarbonBot({ user, emissions = [] }) {
 
           {!minimised && (
             <>
-              {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, i) => (
                   <div key={i} className={clsx('flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -375,7 +370,6 @@ export default function CarbonBot({ user, emissions = [] }) {
                 <div ref={bottomRef} />
               </div>
 
-              {/* Quick suggestions — context-aware, only on first message */}
               {messages.length === 1 && (
                 <div className="px-4 pb-3 shrink-0">
                   <p className="text-xs text-forest-500 mb-2">Quick questions:</p>
@@ -392,7 +386,6 @@ export default function CarbonBot({ user, emissions = [] }) {
                 </div>
               )}
 
-              {/* Input */}
               <div className="p-3 border-t border-white/10 shrink-0">
                 <div className="flex gap-2 items-end">
                   <textarea
