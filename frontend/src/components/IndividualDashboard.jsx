@@ -332,15 +332,34 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
         <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <CategoryDonutCard segments={donutSegments} totalKg={donutTotalKg} />
           <div className="bg-white/2 p-5 rounded-[28px] border border-white/5 shadow-xl">
-            <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Lightbulb size={14} /> Smart Recommendations</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-[11px] font-black text-forest-500 uppercase tracking-widest flex items-center gap-2">
+                  <Lightbulb size={14} /> Smart Recommendations
+                </h3>
+                <p className="text-[10px] text-forest-400 font-semibold mt-0.5">
+                  AI-generated · Groq personalized insights
+                </p>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-forest-500/15 text-forest-300 border border-forest-500/30">
+                AI-generated
+              </span>
+            </div>
             {tipsLoading ? (
               <div className="space-y-3"><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/><div className="h-16 bg-white/5 rounded-2xl animate-pulse"/></div>
             ) : (
               <div className="space-y-3">
                 {displayTips.map((t, i) => (
-                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/8 transition-all group">
-                    <span className="text-3xl transition-transform group-hover:scale-110 duration-300">{t.icon}</span>
-                    <div><p className="text-sm font-bold text-white mb-1">{t.title}</p><p className="text-xs text-forest-300 leading-relaxed font-medium">{t.desc}</p></div>
+                  <div key={i} className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/8 transition-all group">
+                    <div className="flex gap-4">
+                      <span className="text-3xl transition-transform group-hover:scale-110 duration-300">{t.icon}</span>
+                      <div><p className="text-sm font-bold text-white mb-1">{t.title}</p><p className="text-xs text-forest-300 leading-relaxed font-medium">{t.desc}</p></div>
+                    </div>
+                    {t.saving && (
+                      <span className="shrink-0 text-[10px] font-black text-forest-300 bg-forest-500/15 border border-forest-500/25 px-2.5 py-1 rounded-xl">
+                        {t.saving}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -496,9 +515,9 @@ export default function IndividualDashboard({ setShowLogModal, emissions, emissi
 }
 
 const FALLBACK_TIPS_STATIC = [
-  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km.' },
-  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week makes a big difference.' },
-  { icon: '💡', title: 'Switch to LED lighting', desc: 'LEDs use 75% less energy than old bulbs.' },
+  { icon: '🚗', title: 'Reduce short car trips', desc: 'Walk or cycle for trips under 2 km to significantly cut fuel emissions.', saving: 'Save ~200 kg/year' },
+  { icon: '🥗', title: 'Try meat-free days', desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.', saving: 'Save ~150 kg/year' },
+  { icon: '💡', title: 'Switch to LED lighting', desc: 'LED bulbs use 75% less energy than old bulbs — easy swap, big impact.', saving: 'Save ~80 kg/year' },
 ];
 
 const BADGE_MAP = {
