@@ -144,71 +144,35 @@ const parseTipsJson = (rawText) => {
   }));
 };
 
-const callGroqTips = async (prompt) => {
-  const keys = [
-    import.meta.env.VITE_GROQ_API_KEY_2,
-    import.meta.env.VITE_GROQ_API_KEY_3,
-    import.meta.env.VITE_GROQ_API_KEY,
-  ].filter(Boolean);
+// Tips are generated on the server (/api/ai/tips) so the Groq key never reaches the browser.
+const inflight = new Map();           // dedupes concurrent requests for the same cache key
+const FAIL_COOLDOWN_MS = 30 * 60 * 1000;
 
-  if (keys.length === 0) {
-    throw new Error('NO_GROQ_KEYS');
+const readCache = (key) => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(key));
+    const tips = Array.isArray(raw) ? raw : raw?.tips;   // supports old array format
+    return Array.isArray(tips) && tips.length > 0 ? tips : null;
+  } catch {
+    return null;
   }
+};
 
-  let lastError = null;
-
-  for (const apiKey of keys) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are a carbon footprint coach. Reply ONLY with valid JSON, no markdown or extra text.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 400,
-        }),
-      });
-
-      if (res.status === 429) {
-        lastError = new Error('GROQ_RATE_LIMIT_429');
-        continue;
-      }
-
-      if (!res.ok) {
-        lastError = new Error(`GROQ_API_ERROR_${res.status}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content || '';
-      const validTips = parseTipsJson(content);
-
-      if (!validTips) {
-        lastError = new Error('INVALID_TIPS_JSON');
-        continue;
-      }
-
-      return validTips;
-    } catch (err) {
-      lastError = err;
-    }
+const recentlyFailed = (key) => {
+  try {
+    const t = Number(sessionStorage.getItem(`${key}_failed_at`));
+    return t && Date.now() - t < FAIL_COOLDOWN_MS;
+  } catch {
+    return false;
   }
+};
 
-  throw lastError || new Error('ALL_GROQ_KEYS_FAILED');
+// Counts real network requests so the paper can report a measured number.
+const countRequest = () => {
+  try {
+    const n = Number(sessionStorage.getItem('ai_tips_requests') || 0) + 1;
+    sessionStorage.setItem('ai_tips_requests', String(n));
+  } catch {}
 };
 
 export const useAITips = (emissions, user, userLocation = null) => {
@@ -216,77 +180,83 @@ export const useAITips = (emissions, user, userLocation = null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const hasData = Array.isArray(emissions) && emissions.length > 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = `ai_tips_${user?.id || 'guest'}_${today}`;
+
   const generateTips = useCallback(async () => {
-    if (!Array.isArray(emissions) || emissions.length === 0) return;
+    if (!hasData) return;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const cacheKey = `ai_tips_${user?.id || 'guest'}_${today}`;
+    // 1) cache hit: no network
+    const cached = readCache(cacheKey);
+    if (cached) {
+      setTips(cached);
+      setError(null);
+      return;
+    }
 
-    try {
-      const cachedRaw = localStorage.getItem(cacheKey);
-      if (cachedRaw) {
-        const cachedTips = JSON.parse(cachedRaw);
-        if (Array.isArray(cachedTips) && cachedTips.length > 0) {
-          setTips(cachedTips);
-          setError(null);
-          return;
-        }
-      }
-    } catch {}
+    // 2) a recent failure: show fallback, don't retry on every load
+    if (recentlyFailed(cacheKey)) {
+      setTips(FALLBACK_TIPS);
+      setError('TIPS_FALLBACK');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split('T')[0];
+      // 3) one request per key at a time
+      if (!inflight.has(cacheKey)) {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+          .toISOString()
+          .split('T')[0];
 
-      const monthlyEmissions = emissions.filter((e) => (e?.date || '') >= startOfMonth);
-      const totals = {};
+        const totals = {};
+        emissions
+          .filter((e) => (e?.date || '') >= startOfMonth)
+          .forEach((e) => {
+            const cat = (e?.category || 'other').toLowerCase();
+            totals[cat] = (totals[cat] || 0) + (parseFloat(e?.co2eKg) || 0);
+          });
 
-      monthlyEmissions.forEach((e) => {
-        const cat = (e?.category || 'other').toLowerCase();
-        totals[cat] = (totals[cat] || 0) + (parseFloat(e?.co2eKg) || 0);
-      });
+        const summary = {
+          totalKg: Math.round(Object.values(totals).reduce((a, b) => a + b, 0)),
+          topSources: Object.entries(totals)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 3)
+            .map(([category, kg]) => ({ category, kg: Math.round(kg) })),
+          streakDays: user?.streakDays || 0,
+          city: userLocation?.city || null,
+          state: userLocation?.state || null,
+          country: user?.country || 'India',
+        };
 
-      const totalKg = Object.values(totals).reduce((a, b) => a + b, 0);
-      const topSources = Object.entries(totals)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3)
-        .map(([cat, kg]) => `${cat}: ${Math.round(kg)} kg`)
-        .join(', ');
+        countRequest();
+        const p = axios
+          .post('/api/ai/tips', summary)
+          .then((res) => parseTipsJson(JSON.stringify(res.data)))
+          .finally(() => inflight.delete(cacheKey));
+        inflight.set(cacheKey, p);
+      }
 
-      const locationCtx = userLocation?.city
-        ? `Location: ${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
-        : `Country: ${user?.country || 'India'}`;
-
-      const prompt = `User data:
-${locationCtx}
-This month: ${Math.round(totalKg)} kg CO2e
-Top sources: ${topSources || 'none yet'}
-Streak: ${user?.streakDays || 0} days
-
-Give 3 short personalised tips. Max 2 sentences each. Simple language. Positive tone.
-
-Reply ONLY with this exact JSON, no markdown:
-{"tips":[{"icon":"🚗","title":"tip title","desc":"advice","saving":"Save ~200 kg/year"},{"icon":"🥗","title":"tip title","desc":"advice","saving":"Save ~150 kg/year"},{"icon":"💡","title":"tip title","desc":"advice","saving":"Save ~80 kg/year"}]}`;
-
-      const generated = await callGroqTips(prompt);
+      const generated = await inflight.get(cacheKey);
+      if (!generated) throw new Error('INVALID_TIPS_JSON');
 
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(generated));
+        localStorage.setItem(cacheKey, JSON.stringify({ tips: generated, ts: Date.now() }));
       } catch {}
-
       setTips(generated);
     } catch (err) {
+      try {
+        sessionStorage.setItem(`${cacheKey}_failed_at`, String(Date.now()));
+      } catch {}
       setError(err?.message || 'TIPS_FALLBACK');
       setTips(FALLBACK_TIPS);
     } finally {
       setLoading(false);
     }
-  }, [emissions?.length, user?.id, user?.country, user?.streakDays, userLocation?.city, userLocation?.state]);
+  }, [hasData, cacheKey, user?.country, user?.streakDays, userLocation?.city, userLocation?.state]);
 
   useEffect(() => {
     generateTips();
