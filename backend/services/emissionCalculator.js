@@ -1,5 +1,3 @@
-
-
 const axios = require('axios');
 const logger = require('../utils/logger');
 const EMISSION_FACTORS = require('../utils/emissionFactors');
@@ -8,6 +6,8 @@ class EmissionCalculatorService {
   async calculate({ activitySlug, quantity, unit, country = 'WORLD', activityModel = null }) {
     let emissionFactor = null;
     let source = 'local';
+
+    // 1. Try Climatiq live factor
     if (process.env.CLIMATIQ_API_KEY && activityModel?.climatiqActivityId) {
       try {
         const result = await this.fetchClimatiqFactor(activityModel.climatiqActivityId, country);
@@ -19,16 +19,20 @@ class EmissionCalculatorService {
         logger.warn(`Climatiq API failed for ${activitySlug}: ${err.message}. Falling back to local.`);
       }
     }
+
+    // 2. Use DB regional factor if available
     if (!emissionFactor && activityModel?.regionalFactors?.[country]) {
       emissionFactor = activityModel.regionalFactors[country];
       source = 'db_regional';
     }
 
+    // 3. Fall back to DB global factor
     if (!emissionFactor && activityModel?.emissionFactor) {
       emissionFactor = activityModel.emissionFactor;
       source = 'db_global';
     }
 
+    // 4. Fall back to local hardcoded factors
     if (!emissionFactor) {
       const localFactor = this.getLocalFactor(activitySlug, country);
       emissionFactor = localFactor;
@@ -43,7 +47,6 @@ class EmissionCalculatorService {
 
     return { co2eKg: Math.round(co2eKg * 1000) / 1000, emissionFactor, source };
   }
-
   async bulkCalculate(entries) {
     const results = await Promise.all(
       entries.map(async (entry) => {
@@ -65,14 +68,17 @@ class EmissionCalculatorService {
     return { ...totals, entries: results };
   }
 
+  /**
+   * Lifestyle quiz baseline estimator
+   */
   estimateBaseline(answers) {
     const {
       country = 'WORLD',
       householdSize = 2,
       homeSqm = 80,
-      heatingType = 'gas',          
+      heatingType = 'gas',          // gas | electric | heat_pump | none
       electricityKwhPerMonth = 200,
-      carType = 'petrol',          
+      carType = 'petrol',            // petrol | diesel | hybrid | electric | none
       kmPerWeek = 100,
       flightsPerYear = 1,
       avgFlightHours = 3,
@@ -146,7 +152,7 @@ class EmissionCalculatorService {
       petrol_car_km: factors.car.petrol,
       diesel_car_km: factors.car.diesel,
       electric_car_km: factors.car.electric,
-      flight_km_economy: 0.255,
+      flight_km_economy: factors.flight.economy,
       flight_km_business: 0.714,
       beef_kg: 27.0,
       chicken_kg: 6.9,
