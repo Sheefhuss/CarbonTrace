@@ -1,4 +1,5 @@
 /**
+ * Emission factors (kg CO2e per unit)
  * Sources: IEA, IPCC AR6, EPA, DEFRA 2023
  */
 
@@ -56,18 +57,10 @@ const EMISSION_FACTORS = {
 
   // ─── Flights (kg CO2e per km, per passenger) ─────────────────────────────────
   flight: {
-    economy:   0.24,
+    economy:   0.246,
     business:  0.714,
     first:     0.996,
     domestic:  0.300,
-  },
-
-  // ─── Shipping/Freight (kg CO2e per tonne-km) ────────────────────────────────
-  freight: {
-    road_hgv:  0.102,
-    rail:      0.028,
-    sea:       0.016,
-    air:       0.602,
   },
 };
 
