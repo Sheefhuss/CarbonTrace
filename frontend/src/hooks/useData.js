@@ -114,9 +114,9 @@ const FALLBACK_TIPS = [
     desc: 'Cutting meat twice a week is one of the highest-impact diet changes you can make.',
   },
   {
-    icon: '💡',
-    title: 'Switch to LED lighting',
-    desc: 'LED bulbs use 75% less energy than old bulbs — easy swap, big impact.',
+    icon: '🛍️',
+    title: 'Shop secondhand or repair',
+    desc: 'Choosing pre-owned items or repairing goods cuts manufacturing emissions.',
   },
 ];
 
@@ -141,8 +141,7 @@ const parseTipsJson = (rawText) => {
   }));
 };
 
-// Tips are generated on the server (/api/ai/tips) so the Groq key never reaches the browser.
-const inflight = new Map();           // dedupes concurrent requests for the same cache key
+const inflight = new Map();     
 const FAIL_COOLDOWN_MS = 30 * 60 * 1000;
 
 const readCache = (key) => {
@@ -224,7 +223,6 @@ export const useAITips = (emissions, user, userLocation = null) => {
             .map(([category, kg]) => ({ category, kg: Math.round(kg) })),
           streakDays: user?.streakDays || 0,
           city: userLocation?.city || null,
-          state: userLocation?.state || null,
           country: user?.country || 'India',
         };
 
@@ -253,7 +251,7 @@ export const useAITips = (emissions, user, userLocation = null) => {
       setLoading(false);
     }
     // hasData (boolean), not emissions.length: logging a new activity must not re-trigger this
-  }, [hasData, cacheKey, user?.country, user?.streakDays, userLocation?.city, userLocation?.state]);
+  }, [hasData, cacheKey, user?.country, user?.streakDays, userLocation?.city]);
 
   useEffect(() => {
     generateTips();
