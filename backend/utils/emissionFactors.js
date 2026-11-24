@@ -1,5 +1,4 @@
 /**
- * Emission factors (kg CO2e per unit)
  * Sources: IEA, IPCC AR6, EPA, DEFRA 2023
  */
 
@@ -23,7 +22,7 @@ const EMISSION_FACTORS = {
 
   // ─── Car (kg CO2e per km) ────────────────────────────────────────────────────
   car: {
-    petrol:   0.192,
+    petrol:   0.170,
     diesel:   0.171,
     hybrid:   0.103,
     electric: 0.053,
@@ -57,7 +56,7 @@ const EMISSION_FACTORS = {
 
   // ─── Flights (kg CO2e per km, per passenger) ─────────────────────────────────
   flight: {
-    economy:   0.255,
+    economy:   0.24,
     business:  0.714,
     first:     0.996,
     domestic:  0.300,
@@ -69,30 +68,6 @@ const EMISSION_FACTORS = {
     rail:      0.028,
     sea:       0.016,
     air:       0.602,
-  },
-
-  // ─── Industrial processes ────────────────────────────────────────────────────
-  industrial: {
-    cement_tonne:     816.0,
-    steel_tonne:     1850.0,
-    aluminium_tonne: 12000.0,
-    paper_tonne:     1060.0,
-    plastic_tonne:   3140.0,
-  },
-
-  // ─── Waste (kg CO2e per tonne) ───────────────────────────────────────────────
-  waste: {
-    landfill:              467.0,
-    incineration:         1083.0,
-    composting:             23.0,
-    recycling:             -50.0,
-    anaerobic_digestion:   180.0,
-  },
-
-  // ─── Water (kg CO2e per cubic meter) ────────────────────────────────────────
-  water: {
-    supply:     0.344,
-    treatment:  0.708,
   },
 };
 
